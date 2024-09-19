@@ -223,6 +223,7 @@ class settings_window(QMainWindow):
        self.setCentralWidget(window)
        #similar to last time, this is instantiated to display the simulation once the button is pressed
        self.simulation_window = sim_window(prey_speed,prey_avg_energy,prey_mutation,prey_max_energy,prey_population)
+       #def __init__(self,speed,max_energy,energy_use,attack,gen):
 
 
    #this will display the number that the slider is at    
@@ -242,6 +243,7 @@ class settings_window(QMainWindow):
 #this is the main window where the simulation will be displayed
 class sim_window(QWidget):
    def __init__(self,prey_speed,prey_avg_energy,prey_mutation,prey_max_energy,prey_population):
+      #def __init__(self,speed,max_energy,energy_use,attack,gen):
       super().__init__()
       self.setWindowTitle("Simulation")
       #this is the window where the simulation will take place
