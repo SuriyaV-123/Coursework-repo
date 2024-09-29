@@ -6,7 +6,7 @@ from random import randint
 
 
 class Prey(QGraphicsEllipseItem):
-    def __init__(self,speed,max_energy,energy_use,attack,gen):
+    def __init__(self,speed,max_energy,energy_use,attack,gen,mutation):
       super().__init__(0,0,20,20)
       #first we set the shape and colour of the prey
       self.setBrush(Qt.GlobalColor.green)
@@ -23,6 +23,8 @@ class Prey(QGraphicsEllipseItem):
       self.gen = gen
       #its current energy
       self.energy = self.max_energy
+      #the chance for the children to change its stats when born
+      self.mutation_chance = mutation
       #the stats that it will pass down to children
       self.stats = [self.speed,self.max_energy,self.energy_use,self.attack]
       #its current position and co-ordinates
@@ -80,11 +82,13 @@ class Prey(QGraphicsEllipseItem):
        if self.energy <= 0:
           scene.removeItem(self)
     #this is the code so that a new instance of prey is made if the prey has enough energy
-    def reproduce(self,energy,mutation_chance,scene):
-       if energy > 50:
+    def reproduce(self,scene):
+       if self.energy > 50:
+          #I copy the current prey's stats so its stats won't change, but they can still be changed 
           temp_stats = self.stats
           for stat in temp_stats:
-             if (randint(0,100)) < mutation_chance:
+             #if the number generated is below or equal to the mutation chance, then the stat will change 
+             if (randint(0,100)) <= self.mutation_chance:
                 if randint(1,2) == 1:
                    stat += 5
                 else:
