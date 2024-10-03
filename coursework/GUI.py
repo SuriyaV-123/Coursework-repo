@@ -180,9 +180,11 @@ class settings_window(QMainWindow):
        self.prey_max_energy = self.prey_max_energy_slider.value()
        self.prey_population = self.prey_population_slider.value()
        self.prey_attack = self.prey_attack_slider.value()
-       #here we add the slider and labels to the different layouts
-       #debug stuff
-       print(self.prey_speed)
+       #here we add the slider and labels to the different layout
+       self.prey_values = [self.prey_speed,self.prey_avg_energy,self.prey_mutation,self.prey_max_energy,self.prey_population,self.prey_attack]
+       for value in self.prey_values:
+
+
        
        
        for setting in prey_settings:
@@ -238,9 +240,14 @@ class settings_window(QMainWindow):
     def display(self,label, value, stat):
         label.setText(f"{stat}: {value}")
         label.adjustSize()  # Expands label size as numbers get larger
-   #this will start the simulation once the start button is pressed
+  
+    #when this function is called, it updates the value of the slider
+    def update_value(self, value,value_changed):
+       value_changed = value
+       
+       
 
-
+ #this will start the simulation once the start button is pressed
     def start_sim(self):
         if self.simulation_window.isVisible():
           self.simulation_window.hide()
