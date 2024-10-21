@@ -86,6 +86,7 @@ class settings_window(QMainWindow):
        start_button.setFixedSize(100,100)
        button_font = QFont('Arial', 15)
        start_button.setFont(button_font)
+       start_button.clicked.connect(self.update_value)
        start_button.clicked.connect(self.start_sim)
 
 
@@ -157,14 +158,24 @@ class settings_window(QMainWindow):
        infectivity_title = QLabel("Infectivity")
        lethality_title = QLabel("Lethality")
        species_affected = QLabel("Species affected")
-       prey_settings = [(self.prey_speed_slider,prey_speed_label,prey_speed_title), (self.prey_population_slider,prey_population_label,prey_population_title), (self.prey_energy_slider,prey_energy_label,prey_energy_title),(self.prey_max_energy_slider,prey_max_label,prey_max_energy_title), (self.prey_mutation_slider,prey_mutation_label,prey_mutation_title),(self.prey_attack_slider,prey_attack_label,prey_attack_title)]
+       #getting the actual value of each slider
+       self.prey_speed = self.prey_speed_slider.value()
+       self.prey_avg_energy = self.prey_energy_slider.value()
+       self.prey_mutation = self.prey_mutation_slider.value()
+       self.prey_max_energy = self.prey_max_energy_slider.value()
+       self.prey_population = self.prey_population_slider.value()
+       self.prey_attack = self.prey_attack_slider.value()
+       #putting the values into a list to use for methods
+       self.prey_values = [self.prey_speed,self.prey_population,self.prey_avg_energy,self.prey_max_energy,self.prey_mutation,self.prey_attack]
+       #grouping the slider, label and title together so they can be displayed properly within a method.
+       self.prey_settings = [(self.prey_speed_slider,prey_speed_label,prey_speed_title), (self.prey_population_slider,prey_population_label,prey_population_title), (self.prey_energy_slider,prey_energy_label,prey_energy_title),(self.prey_max_energy_slider,prey_max_label,prey_max_energy_title), (self.prey_mutation_slider,prey_mutation_label,prey_mutation_title),(self.prey_attack_slider,prey_attack_label,prey_attack_title)]
        predator_settings = [(self.predator_speed_slider,predator_speed_label, predator_speed_title), (self.predator_population_slider,predator_population_label,predator_population_title), (self.predator_energy_slider,predator_energy_label,predator_energy_title),(self.predator_mutation_slider,predator_mutation_label,predator_mutation_title)]
        disease_settings = [(self.infectivity_slider, infectivity_label, infectivity_title), (self.lethality_slider, lethality_label, lethality_title)]
 
 
        
        #this is the minimum and maximum values that the slider can be set to. It will go up in 5s.
-       for setting in prey_settings + predator_settings + disease_settings :
+       for setting in self.prey_settings + predator_settings + disease_settings :
           slider = setting[0]
           label = setting[1]
           stat = setting[2]
@@ -173,21 +184,16 @@ class settings_window(QMainWindow):
           slider.setTickInterval(5)
           #here we make sure that the correct label is under the right slider
           slider.valueChanged.connect(lambda value, label = label, stat = stat.text(): self.display(label, value, stat))
-        #here we get the values from the slider to instatiate the prey
-       self.prey_speed = self.prey_speed_slider.value()
-       self.prey_avg_energy = self.prey_energy_slider.value()
-       self.prey_mutation = self.prey_mutation_slider.value()
-       self.prey_max_energy = self.prey_max_energy_slider.value()
-       self.prey_population = self.prey_population_slider.value()
-       self.prey_attack = self.prey_attack_slider.value()
+        
+
+       
        #here we add the slider and labels to the different layout
-       self.prey_values = [self.prey_speed,self.prey_avg_energy,self.prey_mutation,self.prey_max_energy,self.prey_population,self.prey_attack]
-       for value in self.prey_values:
-
+       
+       
 
        
        
-       for setting in prey_settings:
+       for setting in self.prey_settings:
           prey_layout.addWidget(setting[2])
           prey_layout.addWidget(setting[0])
           prey_layout.addWidget(setting[1])
@@ -226,14 +232,9 @@ class settings_window(QMainWindow):
        main_layout.setAlignment(start_button,Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
        window = QWidget()
        window.setLayout(main_layout)
-       
-       
-
-
        self.setCentralWidget(window)
-       #similar to last time, this is instantiated to display the simulation once the button is pressed
-       self.simulation_window = sim_window(self.prey_speed,self.prey_avg_energy,self.prey_attack,self.prey_max_energy,self.prey_population,self.prey_mutation)
-       #def __init__(self,speed,max_energy,energy_use,attack,gen,mutation):
+
+       #def __init__(self,prey_speed,prey_avg_energy,prey_mutation,prey_max_energy,prey_population,prey_attack):
 
 
    #this will display the number that the slider is at    
@@ -242,16 +243,29 @@ class settings_window(QMainWindow):
         label.adjustSize()  # Expands label size as numbers get larger
   
     #when this function is called, it updates the value of the slider
-    def update_value(self, value,value_changed):
-       value_changed = value
-       
-       
-
- #this will start the simulation once the start button is pressed
+    def update_value(self):
+      #this will iterate through the sliders and the values at the same time
+       for i in range(len(self.prey_settings)):
+         slider = self.prey_settings[i][0]
+         self.prey_values[i] = slider.value()
+         #now we make sure that the variables themselves are updated, rather than just the list
+         self.prey_speed,self.prey_avg_energy,self.prey_mutation,self.prey_max_energy,self.prey_population,self.prey_attack = self.prey_values
+         #this will also update the values for the simulation window
+      
+       print(self.prey_speed)
+       print(self.prey_avg_energy)
+       print(self.prey_mutation)
+       print(self.prey_max_energy)
+       print(self.prey_population)
+       print(self.prey_attack)
+      
+#this will start the simulation once the start button is pressed
     def start_sim(self):
-        if self.simulation_window.isVisible():
+        #similar to last time, this is instantiated to display the simulation once the button is pressed
+       self.simulation_window = sim_window(self.prey_speed,self.prey_avg_energy,self.prey_mutation,self.prey_max_energy,self.prey_population,self.prey_attack)
+       if self.simulation_window.isVisible():
           self.simulation_window.hide()
-        else:
+       else:
           self.simulation_window.show()
 
 
@@ -274,9 +288,10 @@ class sim_window(QWidget):
       self.max_energy = prey_max_energy
       self.mutation = prey_mutation
       self.attack = prey_attack
+      self.population = prey_population
 
       #now we can instantiate the amount of prey required
-      self.prey_group = [Prey(self.speed,self.max_energy,self.avg_energy,self.attack,0,self.mutation) for i in range(prey_population)]
+      self.prey_group = [Prey(self.speed,self.max_energy,self.avg_energy,self.attack,0,self.mutation) for i in range(self.population)]
       #def __init__(self,speed,max_energy,energy_use,attack,gen,mutation):
       for prey in self.prey_group:
          #spawn the prey at random positions
@@ -301,6 +316,8 @@ class sim_window(QWidget):
    def prey_loop(self):
       for prey in self.prey_group:
          prey.move(0,self.HEIGHT,0,self.WIDTH)
+
+
 
 
 app = QApplication(sys.argv)
