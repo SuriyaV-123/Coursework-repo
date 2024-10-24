@@ -249,15 +249,11 @@ class settings_window(QMainWindow):
          slider = self.prey_settings[i][0]
          self.prey_values[i] = slider.value()
          #now we make sure that the variables themselves are updated, rather than just the list
-         self.prey_speed,self.prey_avg_energy,self.prey_mutation,self.prey_max_energy,self.prey_population,self.prey_attack = self.prey_values
+         #self.prey_values = [self.prey_speed,self.prey_population,self.prey_avg_energy,self.prey_max_energy,self.prey_mutation,self.prey_attack]
+         self.prey_speed,self.prey_population,self.prey_avg_energy,self.prey_max_energy,self.prey_mutation,self.prey_attack = self.prey_values
          #this will also update the values for the simulation window
       
-       print(self.prey_speed)
-       print(self.prey_avg_energy)
-       print(self.prey_mutation)
-       print(self.prey_max_energy)
-       print(self.prey_population)
-       print(self.prey_attack)
+
       
 #this will start the simulation once the start button is pressed
     def start_sim(self):
@@ -286,7 +282,6 @@ class sim_window(QWidget):
       self.avg_energy = prey_avg_energy
       self.mutation = prey_mutation
       self.max_energy = prey_max_energy
-      self.mutation = prey_mutation
       self.attack = prey_attack
       self.population = prey_population
 
@@ -299,6 +294,7 @@ class sim_window(QWidget):
          y = randint(0,self.HEIGHT-200)
          prey.setPos(x,y)
          self.scene.addItem(prey)
+         
 
          
 

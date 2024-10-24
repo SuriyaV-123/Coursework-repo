@@ -1,5 +1,5 @@
-from PyQt6.QtWidgets import QGraphicsEllipseItem
-from PyQt6.QtGui import QBrush, QTransform
+from PyQt6.QtWidgets import QGraphicsEllipseItem,QGraphicsLineItem
+from PyQt6.QtGui import QTransform
 from PyQt6.QtCore import Qt, QPointF
 from random import randint
 #This file will store the classes for prey, predator and disease
@@ -7,6 +7,7 @@ from random import randint
 
 class Prey(QGraphicsEllipseItem):
     def __init__(self,speed,max_energy,energy_use,attack,gen,mutation):
+      #this sets the size of the prey
       super().__init__(0,0,20,20)
       #first we set the shape and colour of the prey
       self.setBrush(Qt.GlobalColor.green)
@@ -35,6 +36,13 @@ class Prey(QGraphicsEllipseItem):
       self.children = 0
       #whether it is currently being attacked or not
       self.being_attacked = False
+      #the position of the closest predator and food
+      self.closest_predator = (None,None)
+      self.closest_prey = (None,None)
+      #a list of all the predators in the prey's vision
+      self.predators_seen = []
+      #a list of all the food in the predator's vision
+      self.food_seen = []
 
    
     def __repr__(self):
@@ -81,6 +89,7 @@ class Prey(QGraphicsEllipseItem):
     def die(self,scene):
        if self.energy <= 0:
           scene.removeItem(self)
+          
     #this is the code so that a new instance of prey is made if the prey has enough energy
     def reproduce(self,scene):
        if self.energy > 50:
@@ -127,3 +136,32 @@ class Prey(QGraphicsEllipseItem):
                 #it will then "deal damage" to the predator
                 enemy_energy -= self.attack
                 entity.set_energy()
+
+    def detect(self,scene):
+       pass
+
+#in order for detection to work for the prey and predators, I will be making a new class for 'rays'
+#whenever an object collides with a ray, it will report the position of the object to the creature it's attached to
+class ray(QGraphicsLineItem):
+   def __init__(self,prey_in_sight,predators_in_sight,food_in_sight):
+      super().__init__(0,0,50,50)
+      self.setBrush(Qt.GlobalColor.black)
+      self.detected_predators = []
+      self.detected_food = []
+
+
+   
+   def check_collision(self):
+      self.detected_items = self.collidingItems()
+      for item in self.detected_items:
+         if item.__repr__() == "predator":
+            self.detected_predators.append([item,item.pos()])
+         elif item.__repr__() == "food":
+            self.detected_food.append([item,item.pos()])
+      
+
+
+
+
+
+
