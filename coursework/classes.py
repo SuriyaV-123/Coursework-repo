@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import QGraphicsEllipseItem,QGraphicsLineItem
 from PyQt6.QtGui import QTransform
 from PyQt6.QtCore import Qt, QPointF
 from random import randint
+import math
 #This file will store the classes for prey, predator and disease
 
 
@@ -36,6 +37,8 @@ class Prey(QGraphicsEllipseItem):
       self.children = 0
       #whether it is currently being attacked or not
       self.being_attacked = False
+      #we add a list of the rays that the prey currently has
+      self.rays = []
       #the position of the closest predator and food
       self.closest_predator = (None,None)
       self.closest_prey = (None,None)
@@ -53,8 +56,29 @@ class Prey(QGraphicsEllipseItem):
     
     def set_energy(self,new_energy):
        self.energy = new_energy
-#now we make a temporary method so the prey can move
 
+#adding a method so that the rays can be added to the prey
+    def add_rays(self):
+      for i in range(8):
+         #make sure that the rays are evenly spread along the circle
+         angle = i * (360/8)
+         #the cos function only uses radians
+         max_x = 10 * math.cos(math.radians(angle))
+         max_y = 10 * math.sin(math.radians(angle))
+         #since the circles in pyqt6 don't have a width and height method, but the bounding rectangle does,
+         #we will use the bounding rectangle's height and with for the centre
+         rect = self.boundingRect()
+         centre_x = rect.width() / 2
+         centre_y = rect.height() / 2
+         #now we instantiate the ray
+         ray = Ray(self,centre_x, centre_y, max_x, max_y)
+         #add it to the list of rays
+         self.rays.append(ray)
+
+
+
+      
+#now we make a temporary method so the prey can move
 
     def move(self,min_x,max_x, min_y, max_y):
        #first we move on the x-axis
@@ -142,10 +166,11 @@ class Prey(QGraphicsEllipseItem):
 
 #in order for detection to work for the prey and predators, I will be making a new class for 'rays'
 #whenever an object collides with a ray, it will report the position of the object to the creature it's attached to
-class ray(QGraphicsLineItem):
-   def __init__(self,prey_in_sight,predators_in_sight,food_in_sight):
-      super().__init__(0,0,50,50)
+class Ray(QGraphicsLineItem):
+   def __init__(self,attached_prey,centre_x,centre_y,max_x,max_y):
+      super().__init__(centre_x,centre_y,max_x,max_y,attached_prey)
       self.setBrush(Qt.GlobalColor.black)
+      self.detected_prey = []
       self.detected_predators = []
       self.detected_food = []
 
@@ -158,6 +183,9 @@ class ray(QGraphicsLineItem):
             self.detected_predators.append([item,item.pos()])
          elif item.__repr__() == "food":
             self.detected_food.append([item,item.pos()])
+         elif item.__repr__() == "prey":
+            self.detected_prey.append([item,item.pos()])
+
       
 
 

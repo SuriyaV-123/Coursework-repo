@@ -306,7 +306,7 @@ class sim_window(QWidget):
       #now we add a timer so the simulation can update
       self.timer = QTimer(self)
       self.timer.timeout.connect(self.prey_loop)
-      self.timer.start(80)
+      self.timer.start(33.3) #this will run at around 30 fps
     #here we make a loop of what the prey will do as defined by the flowchart that I made
    
    def prey_loop(self):
