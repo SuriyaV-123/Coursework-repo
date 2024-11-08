@@ -294,6 +294,7 @@ class sim_window(QWidget):
          y = randint(0,self.HEIGHT-200)
          prey.setPos(x,y)
          self.scene.addItem(prey)
+         prey.add_rays()
          
 
          
@@ -306,12 +307,13 @@ class sim_window(QWidget):
       #now we add a timer so the simulation can update
       self.timer = QTimer(self)
       self.timer.timeout.connect(self.prey_loop)
-      self.timer.start(33.3) #this will run at around 30 fps
+      self.timer.start(80) #this will run at around 30 fps
     #here we make a loop of what the prey will do as defined by the flowchart that I made
    
    def prey_loop(self):
       for prey in self.prey_group:
          prey.move(0,self.HEIGHT,0,self.WIDTH)
+         prey.detect()
 
 
 

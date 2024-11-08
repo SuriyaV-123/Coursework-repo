@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QGraphicsEllipseItem,QGraphicsLineItem
-from PyQt6.QtGui import QTransform
+from PyQt6.QtGui import QTransform,QPen
 from PyQt6.QtCore import Qt, QPointF
 from random import randint
 import math
@@ -39,9 +39,12 @@ class Prey(QGraphicsEllipseItem):
       self.being_attacked = False
       #we add a list of the rays that the prey currently has
       self.rays = []
-      #the position of the closest predator and food
+      #the position of the closest prey,predator and food
       self.closest_predator = (None,None)
       self.closest_prey = (None,None)
+      self.closest_food = (None,None)
+      #a list of all the prey in the prey's vision
+      self.prey_seen = []
       #a list of all the predators in the prey's vision
       self.predators_seen = []
       #a list of all the food in the predator's vision
@@ -63,8 +66,8 @@ class Prey(QGraphicsEllipseItem):
          #make sure that the rays are evenly spread along the circle
          angle = i * (360/8)
          #the cos function only uses radians
-         max_x = 10 * math.cos(math.radians(angle))
-         max_y = 10 * math.sin(math.radians(angle))
+         max_x = 100 * math.cos(math.radians(angle))
+         max_y = 100 * math.sin(math.radians(angle))
          #since the circles in pyqt6 don't have a width and height method, but the bounding rectangle does,
          #we will use the bounding rectangle's height and with for the centre
          rect = self.boundingRect()
@@ -74,6 +77,7 @@ class Prey(QGraphicsEllipseItem):
          ray = Ray(self,centre_x, centre_y, max_x, max_y)
          #add it to the list of rays
          self.rays.append(ray)
+
 
 
 
@@ -161,21 +165,73 @@ class Prey(QGraphicsEllipseItem):
                 enemy_energy -= self.attack
                 entity.set_energy()
 
-    def detect(self,scene):
-       pass
+#this takes in all the objects that the ray has detected
+    def detect(self):
+       #iterate through all the rays that are connected to the prey
+       for ray in self.rays:
+          ray.check_collision()
+          prey_detected, predators_detected, food_detected = ray.get_lists()
+          #gets all the prey, predators and food seen by the rays and adds them to the lists.
+          for prey in prey_detected:
+             self.prey_seen.append(prey)
+         
+          for predator in predators_detected:
+             self.predators_seen.append(predator)
+          
+          for food in food_detected:
+             self.food_seen.append(food)
+            
+       #next, check what is the closest of each prey, predator and food
+       closest_prey_distance = 9999999999
+       for prey in prey_detected:
+          prey_pos = prey[1]
+          prey_x_pos = prey_pos[0]
+          prey_y_pos = prey_pos[1]
+          current_distance = math.sqrt((prey_x_pos-self.x_pos)**2 + (prey_y_pos-self.y_pos)**2)
+          if current_distance < closest_prey_distance:
+             closest_prey_distance = current_distance
+             self.closest_prey = (prey_x_pos,prey_y_pos)
+             
+       closest_predator_distance = 9999999999
+       for predator in predators_detected:
+          predator_pos = predator[1]
+          predator_x_pos = predator_pos[0]
+          predator_y_pos = predator_pos[1]
+          current_distance = math.sqrt((predator_x_pos-self.x_pos)**2 + (predator_y_pos-self.y_pos)**2)
+          if current_distance < closest_predator_distance:
+             closest_predator_distance = current_distance
+             self.closest_predator = (predator_x_pos,predator_y_pos)
+       
+       closest_food_distance = 9999999999
+       for food in food_detected:
+          food_pos = food[1]
+          food_x_pos = food_pos[0]
+          food_y_pos = food_pos[1]
+          current_distance = math.sqrt((food_x_pos-self.x_pos)**2 + (food_y_pos-self.y_pos)**2)
+          if current_distance < closest_food_distance:
+             closest_food_distance = current_distance
+             self.closest_food = (food_x_pos,food_y_pos)
+
+       print(self.closest_prey)
+
 
 #in order for detection to work for the prey and predators, I will be making a new class for 'rays'
 #whenever an object collides with a ray, it will report the position of the object to the creature it's attached to
 class Ray(QGraphicsLineItem):
    def __init__(self,attached_prey,centre_x,centre_y,max_x,max_y):
       super().__init__(centre_x,centre_y,max_x,max_y,attached_prey)
-      self.setBrush(Qt.GlobalColor.black)
+      pen = QPen(Qt.GlobalColor.black)
+      pen.setWidth(3)
+      self.setPen(pen)
       self.detected_prey = []
       self.detected_predators = []
       self.detected_food = []
 
-
+   #returns the objects that the ray has
+   def get_lists(self):
+      return self.detected_prey, self.detected_predators, self.detected_food
    
+
    def check_collision(self):
       self.detected_items = self.collidingItems()
       for item in self.detected_items:
