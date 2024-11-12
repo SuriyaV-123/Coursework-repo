@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import  QApplication, QWidget, QMainWindow, QPushButton, QL
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 from random import randint
-from classes import Prey
+from classes import Prey,Predator
 import sys
 #This file will contain the classes need for the gui for the simulation, they will be sued for the different windows
 #I will be using the PyQt6 library to make the gui.
@@ -109,6 +109,7 @@ class settings_window(QMainWindow):
        predator_layout.addWidget(predator_title)
        disease_layout.addWidget(disease_title)
        #these are the sliders and checkboxes used in the boxes
+       #by using sliders and checkboxes, it removes the possiblity of any syntax errors caused by user inputs, as the program defines the limits and input type.
        #originally, I was going to have one set of sliders which would be used in both boxes, but that didn't work so now I have to make them separately
        self.prey_speed_slider = QSlider(Qt.Orientation.Horizontal, self)
        self.prey_population_slider = QSlider(Qt.Orientation.Horizontal, self)
@@ -116,10 +117,14 @@ class settings_window(QMainWindow):
        self.prey_mutation_slider = QSlider(Qt.Orientation.Horizontal, self)
        self.prey_max_energy_slider = QSlider(Qt.Orientation.Horizontal)
        self.prey_attack_slider = QSlider(Qt.Orientation.Horizontal)
+
        self.predator_speed_slider = QSlider(Qt.Orientation.Horizontal, self)
        self.predator_population_slider = QSlider(Qt.Orientation.Horizontal, self)
        self.predator_energy_slider = QSlider(Qt.Orientation.Horizontal, self)
        self.predator_mutation_slider = QSlider(Qt.Orientation.Horizontal, self)
+       self.predator_max_energy_slider = QSlider(Qt.Orientation.Horizontal, self)
+       self.predator_attack_slider = QSlider(Qt.Orientation.Horizontal)
+
        self.infectivity_slider = QSlider(Qt.Orientation.Horizontal, self)
        self.lethality_slider = QSlider(Qt.Orientation.Horizontal, self)
        self.prey_affected = QCheckBox()
@@ -136,10 +141,14 @@ class settings_window(QMainWindow):
        prey_max_label = QLabel()
        prey_mutation_label = QLabel()
        prey_attack_label = QLabel()
+
        predator_speed_label = QLabel()
        predator_population_label = QLabel()
-       predator_mutation_label = QLabel()
        predator_energy_label = QLabel()
+       predator_max_label = QLabel()
+       predator_mutation_label = QLabel()
+       predator_attack_label = QLabel()
+       
        infectivity_label = QLabel()
        lethality_label = QLabel()
 
@@ -151,10 +160,14 @@ class settings_window(QMainWindow):
        prey_max_energy_title = QLabel("Maximum energy")
        prey_mutation_title = QLabel("Chance of mutation")
        prey_attack_title = QLabel("Attack power")
+
        predator_speed_title = QLabel("Average Speed")
        predator_population_title = QLabel("Starting population")
        predator_energy_title = QLabel("Average energy use")
+       predator_max_energy_title = QLabel("Maximum energy")
        predator_mutation_title = QLabel("Chance of mutation")
+       predator_attack_title = QLabel("Attack power")
+
        infectivity_title = QLabel("Infectivity")
        lethality_title = QLabel("Lethality")
        species_affected = QLabel("Species affected")
@@ -165,17 +178,26 @@ class settings_window(QMainWindow):
        self.prey_max_energy = self.prey_max_energy_slider.value()
        self.prey_population = self.prey_population_slider.value()
        self.prey_attack = self.prey_attack_slider.value()
+
+       self.predator_speed = self.predator_speed_slider.value()
+       self.predator_avg_energy = self.predator_energy_slider.value()
+       self.predator_mutation = self.predator_mutation_slider.value()
+       self.predator_max_energy = self.predator_max_energy_slider.value()
+       self.predator_population = self.predator_population_slider.value()
+       self.predator_attack = self.predator_attack_slider.value()
+
        #putting the values into a list to use for methods
        self.prey_values = [self.prey_speed,self.prey_population,self.prey_avg_energy,self.prey_max_energy,self.prey_mutation,self.prey_attack]
+       self.predator_values = [self.predator_speed,self.predator_population,self.predator_avg_energy,self.predator_max_energy,self.predator_mutation,self.predator_attack]
        #grouping the slider, label and title together so they can be displayed properly within a method.
        self.prey_settings = [(self.prey_speed_slider,prey_speed_label,prey_speed_title), (self.prey_population_slider,prey_population_label,prey_population_title), (self.prey_energy_slider,prey_energy_label,prey_energy_title),(self.prey_max_energy_slider,prey_max_label,prey_max_energy_title), (self.prey_mutation_slider,prey_mutation_label,prey_mutation_title),(self.prey_attack_slider,prey_attack_label,prey_attack_title)]
-       predator_settings = [(self.predator_speed_slider,predator_speed_label, predator_speed_title), (self.predator_population_slider,predator_population_label,predator_population_title), (self.predator_energy_slider,predator_energy_label,predator_energy_title),(self.predator_mutation_slider,predator_mutation_label,predator_mutation_title)]
+       self.predator_settings = [(self.predator_speed_slider,predator_speed_label, predator_speed_title), (self.predator_population_slider,predator_population_label,predator_population_title), (self.predator_energy_slider,predator_energy_label,predator_energy_title),(self.predator_max_energy_slider,predator_max_label,predator_max_energy_title),(self.predator_mutation_slider,predator_mutation_label,predator_mutation_title),(self.predator_attack_slider,predator_attack_label,predator_attack_title)]
        disease_settings = [(self.infectivity_slider, infectivity_label, infectivity_title), (self.lethality_slider, lethality_label, lethality_title)]
 
 
        
        #this is the minimum and maximum values that the slider can be set to. It will go up in 5s.
-       for setting in self.prey_settings + predator_settings + disease_settings :
+       for setting in self.prey_settings + self.predator_settings + disease_settings :
           slider = setting[0]
           label = setting[1]
           stat = setting[2]
@@ -198,7 +220,7 @@ class settings_window(QMainWindow):
           prey_layout.addWidget(setting[0])
           prey_layout.addWidget(setting[1])
        
-       for setting in predator_settings:
+       for setting in self.predator_settings:
           predator_layout.addWidget(setting[2])
           predator_layout.addWidget(setting[0])
           predator_layout.addWidget(setting[1])
@@ -246,11 +268,14 @@ class settings_window(QMainWindow):
     def update_value(self):
       #this will iterate through the sliders and the values at the same time
        for i in range(len(self.prey_settings)):
-         slider = self.prey_settings[i][0]
-         self.prey_values[i] = slider.value()
+         prey_slider = self.prey_settings[i][0]
+         predator_slider = self.predator_settings[i][0]
+         self.prey_values[i] = prey_slider.value()
+         self.predator_values[i] = predator_slider.value()
          #now we make sure that the variables themselves are updated, rather than just the list
          #self.prey_values = [self.prey_speed,self.prey_population,self.prey_avg_energy,self.prey_max_energy,self.prey_mutation,self.prey_attack]
          self.prey_speed,self.prey_population,self.prey_avg_energy,self.prey_max_energy,self.prey_mutation,self.prey_attack = self.prey_values
+         self.predator_speed,self.predator_population,self.predator_avg_energy,self.predator_max_energy,self.predator_mutation,self.predator_attack = self.predator_values
          #this will also update the values for the simulation window
       
 
@@ -258,7 +283,7 @@ class settings_window(QMainWindow):
 #this will start the simulation once the start button is pressed
     def start_sim(self):
         #similar to last time, this is instantiated to display the simulation once the button is pressed
-       self.simulation_window = sim_window(self.prey_speed,self.prey_avg_energy,self.prey_mutation,self.prey_max_energy,self.prey_population,self.prey_attack)
+       self.simulation_window = sim_window(self.prey_speed,self.prey_avg_energy,self.prey_mutation,self.prey_max_energy,self.prey_population,self.prey_attack,self.predator_speed,self.predator_avg_energy,self.predator_mutation,self.predator_max_energy,self.predator_population,self.predator_attack)
        if self.simulation_window.isVisible():
           self.simulation_window.hide()
        else:
@@ -269,7 +294,7 @@ class settings_window(QMainWindow):
 
 #this is the main window where the simulation will be displayed
 class sim_window(QWidget):
-   def __init__(self,prey_speed,prey_avg_energy,prey_mutation,prey_max_energy,prey_population,prey_attack):
+   def __init__(self,prey_speed,prey_avg_energy,prey_mutation,prey_max_energy,prey_population,prey_attack,predator_speed,predator_avg_energy,predator_mutation,predator_max_energy,predator_population,predator_attack):
       #def __init__(self,speed,max_energy,energy_use,attack,gen):
       super().__init__()
       self.setWindowTitle("Simulation")
@@ -278,15 +303,23 @@ class sim_window(QWidget):
       #we set the height and width of the screen
       self.WIDTH = 900
       self.HEIGHT = 600
-      self.speed = prey_speed
-      self.avg_energy = prey_avg_energy
-      self.mutation = prey_mutation
-      self.max_energy = prey_max_energy
-      self.attack = prey_attack
-      self.population = prey_population
+
+      self.prey_speed = prey_speed
+      self.prey_avg_energy = prey_avg_energy
+      self.prey_mutation = prey_mutation
+      self.prey_max_energy = prey_max_energy
+      self.prey_attack = prey_attack
+      self.prey_population = prey_population
+
+      self.predator_speed = predator_speed
+      self.predator_avg_energy = predator_avg_energy
+      self.predator_mutation = predator_mutation
+      self.predator_max_energy = predator_max_energy
+      self.predator_attack = predator_attack
+      self.predator_population = predator_population
 
       #now we can instantiate the amount of prey required
-      self.prey_group = [Prey(self.speed,self.max_energy,self.avg_energy,self.attack,0,self.mutation) for i in range(self.population)]
+      self.prey_group = [Prey(self.prey_speed,self.prey_max_energy,self.prey_avg_energy,self.prey_attack,0,self.prey_mutation) for i in range(self.prey_population)]
       #def __init__(self,speed,max_energy,energy_use,attack,gen,mutation):
       for prey in self.prey_group:
          #spawn the prey at random positions
@@ -295,8 +328,16 @@ class sim_window(QWidget):
          prey.setPos(x,y)
          self.scene.addItem(prey)
          prey.add_rays()
-         
-
+      
+      #now adding the amount of predators needed
+      self.predator_group = [Predator(self.predator_speed,self.predator_max_energy,self.predator_avg_energy,self.predator_attack,0,self.predator_mutation) for i in range(self.predator_population)]
+      for predator in self.predator_group:
+         #spawn the predators at random locations
+         x = randint(200,self.WIDTH)
+         y = randint(200,self.HEIGHT)
+         predator.setPos(x,y)
+         self.scene.addItem(predator)
+         predator.add_rays()
          
 
       view = QGraphicsView(self.scene)
@@ -307,13 +348,19 @@ class sim_window(QWidget):
       #now we add a timer so the simulation can update
       self.timer = QTimer(self)
       self.timer.timeout.connect(self.prey_loop)
-      self.timer.start(80) #this will run at around 30 fps
+      self.timer.timeout.connect(self.predator_loop)
+      self.timer.start(80) #this will run at around 13 fps
     #here we make a loop of what the prey will do as defined by the flowchart that I made
    
    def prey_loop(self):
       for prey in self.prey_group:
          prey.move(0,self.HEIGHT,0,self.WIDTH)
          prey.detect()
+
+   def predator_loop(self):
+      for predator in self.predator_group:
+         predator.move(0,self.HEIGHT,0,self.WIDTH)
+         predator.detect()
 
 
 
