@@ -1,14 +1,13 @@
 #importing the relevant pyqt6 modules
 from PyQt6.QtWidgets import QGraphicsEllipseItem,QGraphicsLineItem
 from PyQt6.QtGui import QTransform,QPen
-from PyQt6.QtCore import Qt, QPointF
+from PyQt6.QtCore import Qt, QPointF,QTimer
 #this is for the temporary movement
 from random import randint
 #This is only used for the rays to calculate where they end
 import math
-#used for methods which happen after a certain time in the simulation.
-from threading import Timer
-#This file will store the classes for prey, predator and disease
+
+#This file will store the classes for prey, predator,disease and food
 
 
 class Prey(QGraphicsEllipseItem):
@@ -493,7 +492,4 @@ class Food(QGraphicsEllipseItem):
       self.current_pos = self.pos()
       self.x_pos = self.current_pos.x()
       self.y_pos = self.current_pos.y()
-
-
-
-      
+      #add the other methods later.      

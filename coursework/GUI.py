@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import  QApplication, QWidget, QMainWindow, QPushButton, QL
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 from random import randint
-from classes import Prey,Predator
+from classes import Prey,Predator,Food
 import sys
 #This file will contain the classes need for the gui for the simulation, they will be sued for the different windows
 #I will be using the PyQt6 library to make the gui.
@@ -338,7 +338,9 @@ class sim_window(QWidget):
          predator.setPos(x,y)
          self.scene.addItem(predator)
          predator.add_rays()
-         
+      
+      #adding some amount of food every so often
+      
 
       view = QGraphicsView(self.scene)
       layout = QVBoxLayout()
