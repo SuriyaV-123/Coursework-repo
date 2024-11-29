@@ -37,7 +37,7 @@ class prey_network(nn.Module):
 
 class prey_agent(object):
   #alpha is the learning rate for the actor, beta is the learning rate for the critic, and gamma is the discount rate (how much you prioritise current rewards to future rewards)
-  def __init__(self,alpha,beta,current_pos,closest_predator,closest_food,speed,gamma=0.5,n_actions=2,n_output=1):
+  def __init__(self,alpha,beta,current_pos,closest_predator,closest_food,speed,gamma=0.5):
      #getting the relevant positions
     self.current_pos = current_pos
     self.closest_predator = closest_predator
@@ -91,7 +91,14 @@ class prey_agent(object):
     critic_value = self.critic_network.forward(first_state)
     reward = torch.tensor(reward, dtype=torch.float).to(self.actor_network.device)
     #delta is the temporal difference loss (a.k.a the difference between what happens and what we want to happen)
-    delta = reward + self.gamma*new_critic_value*(1-int(done)) #done is whether or not the training is done, if it is then it will ignore this line, as int(True) = 0
+    delta = reward + self.gamma*new_critic_value*(1-int(done)) - critic_value
+    #done is whether or not the training is done, if it is then it will ignore this line, as int(True) = 1, so 1-int(True) = 0
+    actor_loss = -self.log_probs * delta
+    critic_loss = delta ** 2 #making sure that delta is positive
+    (actor_loss + critic_loss).backward() #using backpropagation to update weights and biases
+    self.actor_optim.step()
+    self.critic_optim.step()
+
 
 
 
