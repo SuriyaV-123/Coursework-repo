@@ -82,7 +82,7 @@ class prey_agent(object):
     return moving_speed,angle
 
 #now we update the weights and biases within the networks
-  def learn(self,first_state,reward,second_state,done):
+  def learn(self,first_state,reward,second_state):
     #resets the gradients so there is no unneccesary info when training the networks
     self.actor_optim.zero_grad()
     self.critic_optim.zero_grad()
@@ -91,13 +91,13 @@ class prey_agent(object):
     critic_value = self.critic_network.forward(first_state)
     reward = torch.tensor(reward, dtype=torch.float).to(self.actor_network.device)
     #delta is the temporal difference loss (a.k.a the difference between what happens and what we want to happen)
-    delta = reward + self.gamma*new_critic_value*(1-int(done)) - critic_value
-    #done is whether or not the training is done, if it is then it will ignore this line, as int(True) = 1, so 1-int(True) = 0
+    delta = reward + self.gamma*new_critic_value - critic_value
     actor_loss = -self.log_probs * delta
     critic_loss = delta ** 2 #making sure that delta is positive
     (actor_loss + critic_loss).backward() #using backpropagation to update weights and biases
     self.actor_optim.step()
     self.critic_optim.step()
+    
 
 
 

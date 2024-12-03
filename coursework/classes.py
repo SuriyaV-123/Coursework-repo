@@ -2,6 +2,8 @@
 from PyQt6.QtWidgets import QGraphicsEllipseItem,QGraphicsLineItem
 from PyQt6.QtGui import QTransform,QPen
 from PyQt6.QtCore import Qt, QPointF,QTimer
+from neural_networks import prey_agent
+import torch
 #this is for the temporary movement
 from random import randint
 #This is only used for the rays to calculate where they end
@@ -16,9 +18,11 @@ class Prey(QGraphicsEllipseItem):
       super().__init__(0,0,20,20)
       #first we set the shape and colour of the prey
       self.setBrush(Qt.GlobalColor.green)
-      #now we add the attributes that we want to. For now I will add arbitrary values
+      #now we add the attributes that we want to.
       #how fast it moves
       self.speed = speed
+      #the angle that the prey moves at
+      self.angle = None
       #the maximum amount of energy it can use
       self.max_energy = max_energy
       #the energy that it uses up for each action
@@ -53,6 +57,8 @@ class Prey(QGraphicsEllipseItem):
       self.predators_seen = []
       #a list of all the food in the prey's vision
       self.food_seen = []
+      #this is the agent for the prey, this will allow the prey to learn and move
+      self.prey_agent = prey_agent(0.5,0.5,self.current_pos,self.closest_predator,self.closest_food,self.speed,0.5)
 
    
     def __repr__(self):
@@ -82,41 +88,89 @@ class Prey(QGraphicsEllipseItem):
          #add it to the list of rays
          self.rays.append(ray)
 
+    def move(self,min_x,max_x,min_y,max_y):
+      old_state = torch.tensor([self.x_pos,self.y_pos,self.closest_predator.x(),self.closest_predator.y(),self.closest_food.x(),self.closest_food.y()], dtype=torch.float)
+#the moving speed and angle is chosen from the prey agent
+      moving_speed, angle = prey_agent.choose_action()
+      self.setRotation(angle)
+      direction = QPointF(math.cos(angle),math.sin(angle))
+      self.new_pos = QPointF(self.current_pos + direction * moving_speed)
+      #because I don't want to mess with the learning too much, when the species reach one end of the map, they teleport to the other side
+      teleport_x = False
+      teleport_y = False
+      if self.new_pos.x() > max_x:
+         new_x = min_x + (self.new_pos.x()-max_x)
+         teleport_x = True
 
+      elif self.new_pos.x() < min_x:
+         new_x = max_x - self.new_pos.x()
+         teleport_x = True
 
-
+      if self.new_pos.y() > max_y:
+         new_y = min_y + (self.new_pos.y()-max_y)
+         teleport_y = True
       
+      elif self.new_pos.y() < min_y:
+         new_y = max_y - self.new_pos.y()
+         teleport_y = True
+      
+      if teleport_x is True:
+         self.new_pos = QPointF(new_x,self.y_pos)
+
+      if teleport_y is True:
+         self.new_pos = QPointF(self.x_pos,new_y)
+      
+#use detect
+      self.detect()
+      new_state = torch.tensor([self.new_pos.x(),self.new_pos.y(),self.closest_predator.x(),self.closest_predator.y(),self.closest_food.x(),self.closest_food.y()], dtype=torch.float)
+      self.setPos(self.new_pos)
+      self.agent_learn(old_state,new_state)
+
+
+      #this is the loop for the agent learning, this will be called at the end of the move function
+    def agent_learn(self,old_state,new_state):
+       closest_predator_x = self.closest_predator.x()
+       closest_predator_y = self.closest_predator.y()
+       closest_food_x = self.closest_food.x()
+       closest_food_y = self.closest_food.y()
+       #the predator and food distance is calculated using pythagoras
+       predator_distance = math.sqrt((closest_predator_x-self.x_pos)**2 + (closest_predator_y-self.y_pos)**2)
+       food_distance = math.sqrt((closest_food_x-self.x_pos)**2 + (closest_food_y-self.y_pos)**2)
+       #the reward is calculated as the distance between the predator and the food. This encourages the prey to try and run away from the predator and closer to the food.
+       reward = predator_distance - food_distance
+       prey_agent.learn(self,old_state,reward,new_state)
+
 #now we make a temporary method so the prey can move
 
-    def move(self,min_x,max_x, min_y, max_y):
+    #def move(self,min_x,max_x, min_y, max_y):
        #first we move on the x-axis
-       if randint(1,2) == 1:
+       #if randint(1,2) == 1:
           #this makes sure it doesn't go beyond the borders of the screen
-          if (self.x_pos + self.speed) > max_x:
-             self.x_pos = max_x - (self.speed + self.x_pos - max_x)
-          else:
-             self.x_pos += self.speed
-       else:
-          if (self.x_pos - self.speed) < min_x:
-             self.x_pos = self.speed - self.x_pos
-          else:
-             self.x_pos -= self.speed
+          #if (self.x_pos + self.speed) > max_x:
+    #         self.x_pos = max_x - (self.speed + self.x_pos - max_x)
+    #      else:
+     #        self.x_pos += self.speed
+      # else:
+       #   if (self.x_pos - self.speed) < min_x:
+        #     self.x_pos = self.speed - self.x_pos
+         # else:
+          #   self.x_pos -= self.speed
      
       #now we move on the y-axis
-       if randint(1,2) == 1:
-          #this makes sure it doesn't go beyond the borders of the screen
-          if (self.y_pos + self.speed) > max_y:
-             self.y_pos = max_y - (self.speed + self.y_pos - max_y)
-          else:
-             self.y_pos += self.speed
-       else:
-          if (self.y_pos - self.speed) < min_y:
-             self.y_pos = self.speed - self.y_pos
-          else:
-             self.y_pos -= self.speed
+       #if randint(1,2) == 1:
+        #  #this makes sure it doesn't go beyond the borders of the screen
+         # if (self.y_pos + self.speed) > max_y:
+          #   self.y_pos = max_y - (self.speed + self.y_pos - max_y)
+          #else:
+           #  self.y_pos += self.speed
+       #else:
+        #  if (self.y_pos - self.speed) < min_y:
+         #    self.y_pos = self.speed - self.y_pos
+          #else:
+           #  self.y_pos -= self.speed
 
-       self.setPos(self.x_pos,self.y_pos)
-       self.energy -= self.energy_use * 0.1
+       #self.setPos(self.x_pos,self.y_pos)
+       #self.energy -= self.energy_use * 0.1
     #this happens if the prey runs out of energy, they die and are removed from the scene.
     def die(self,scene):
        if self.energy <= 0:
@@ -305,7 +359,7 @@ class Predator(QGraphicsEllipseItem):
 
       
 #now we make a temporary method so the predator can move
-
+    
     def move(self,min_x,max_x, min_y, max_y):
        #first we move on the x-axis
        if randint(1,2) == 1:

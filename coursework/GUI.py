@@ -362,7 +362,7 @@ class sim_window(QWidget):
    def predator_loop(self):
       for predator in self.predator_group:
          predator.move(0,self.HEIGHT,0,self.WIDTH)
-         predator.detect()
+         
 
 
 
