@@ -58,7 +58,7 @@ class Prey(QGraphicsEllipseItem):
       #a list of all the food in the prey's vision
       self.food_seen = []
       #this is the agent for the prey, this will allow the prey to learn and move
-      self.prey_agent = prey_agent(0.5,0.5,self.current_pos,self.closest_predator,self.closest_food,self.speed,0.5)
+      self.prey_agent = prey_agent(0.5,0.5,self.speed,0.5)
 
    
     def __repr__(self):
@@ -85,11 +85,19 @@ class Prey(QGraphicsEllipseItem):
          centre_y = rect.height() / 2
          #now we instantiate the ray
          ray = Ray(self,centre_x, centre_y, max_x, max_y)
-         #add it to the list of rays
          self.rays.append(ray)
 
     def move(self,min_x,max_x,min_y,max_y):
-      old_state = torch.tensor([self.x_pos,self.y_pos,self.closest_predator.x(),self.closest_predator.y(),self.closest_food.x(),self.closest_food.y()], dtype=torch.float)
+      min_x = min_x
+      max_x = max_x
+      min_y = min_y
+      max_y = max_y
+      while self.closest_predator == (None,None) or self.closest_food == (None,None):
+         self.detect()
+         self.prey_agent.update_locations(self.current_pos,self.closest_predator,self.closest_food)
+         self.random_move(min_x,max_x,min_y,max_y)
+
+      old_state = torch.tensor([self.x_pos,self.y_pos,self.closest_predator[0],self.closest_predator[1],self.closest_food[0],self.closest_food[1]], dtype=torch.float)
 #the moving speed and angle is chosen from the prey agent
       moving_speed, angle = prey_agent.choose_action()
       self.setRotation(angle)
@@ -122,9 +130,11 @@ class Prey(QGraphicsEllipseItem):
       
 #use detect
       self.detect()
+      self.prey_agent.update_locations(self.current_pos,self.closest_predator,self.closest_food)      
       new_state = torch.tensor([self.new_pos.x(),self.new_pos.y(),self.closest_predator.x(),self.closest_predator.y(),self.closest_food.x(),self.closest_food.y()], dtype=torch.float)
       self.setPos(self.new_pos)
       self.agent_learn(old_state,new_state)
+      self.current_pos = self.new_pos
 
 
       #this is the loop for the agent learning, this will be called at the end of the move function
@@ -142,35 +152,35 @@ class Prey(QGraphicsEllipseItem):
 
 #now we make a temporary method so the prey can move
 
-    #def move(self,min_x,max_x, min_y, max_y):
+    def random_move(self,min_x,max_x, min_y, max_y):
        #first we move on the x-axis
-       #if randint(1,2) == 1:
+       if randint(1,2) == 1:
           #this makes sure it doesn't go beyond the borders of the screen
-          #if (self.x_pos + self.speed) > max_x:
-    #         self.x_pos = max_x - (self.speed + self.x_pos - max_x)
-    #      else:
-     #        self.x_pos += self.speed
-      # else:
-       #   if (self.x_pos - self.speed) < min_x:
-        #     self.x_pos = self.speed - self.x_pos
-         # else:
-          #   self.x_pos -= self.speed
+          if (self.x_pos + self.speed) > max_x:
+             self.x_pos = max_x - (self.speed + self.x_pos - max_x)
+          else:
+             self.x_pos += self.speed
+       else:
+          if (self.x_pos - self.speed) < min_x:
+             self.x_pos = self.speed - self.x_pos
+          else:
+             self.x_pos -= self.speed
      
       #now we move on the y-axis
-       #if randint(1,2) == 1:
-        #  #this makes sure it doesn't go beyond the borders of the screen
-         # if (self.y_pos + self.speed) > max_y:
-          #   self.y_pos = max_y - (self.speed + self.y_pos - max_y)
-          #else:
-           #  self.y_pos += self.speed
-       #else:
-        #  if (self.y_pos - self.speed) < min_y:
-         #    self.y_pos = self.speed - self.y_pos
-          #else:
-           #  self.y_pos -= self.speed
+       if randint(1,2) == 1:
+          #this makes sure it doesn't go beyond the borders of the screen
+          if (self.y_pos + self.speed) > max_y:
+             self.y_pos = max_y - (self.speed + self.y_pos - max_y)
+          else:
+             self.y_pos += self.speed
+       else:
+          if (self.y_pos - self.speed) < min_y:
+             self.y_pos = self.speed - self.y_pos
+          else:
+             self.y_pos -= self.speed
 
-       #self.setPos(self.x_pos,self.y_pos)
-       #self.energy -= self.energy_use * 0.1
+       self.setPos(self.x_pos,self.y_pos)
+       self.energy -= self.energy_use * 0.1
     #this happens if the prey runs out of energy, they die and are removed from the scene.
     def die(self,scene):
        if self.energy <= 0:
@@ -251,7 +261,7 @@ class Prey(QGraphicsEllipseItem):
           prey_pos = prey[1]
           prey_x_pos = prey_pos.x()
           prey_y_pos = prey_pos.y()
-          #using pythagorus to find it
+          #using pythagoras to find it
           current_distance = math.sqrt((prey_x_pos-self.x_pos)**2 + (prey_y_pos-self.y_pos)**2)
           if current_distance < closest_prey_distance:
              closest_prey_distance = current_distance
@@ -354,10 +364,6 @@ class Predator(QGraphicsEllipseItem):
          #add it to the list of rays
          self.rays.append(ray)
 
-
-
-
-      
 #now we make a temporary method so the predator can move
     
     def move(self,min_x,max_x, min_y, max_y):

@@ -1,10 +1,9 @@
 #first we import the necessary modules, mainly from pyqt6. We also import the classes from the classes file
-from PyQt6.QtWidgets import  QApplication, QWidget, QMainWindow, QPushButton, QLabel, QVBoxLayout, QSlider, QHBoxLayout,QGroupBox, QCheckBox, QGraphicsScene, QGraphicsView
+from PyQt6.QtWidgets import QWidget, QMainWindow, QPushButton, QLabel, QVBoxLayout, QSlider, QHBoxLayout,QGroupBox, QCheckBox, QGraphicsScene, QGraphicsView
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 from random import randint
 from classes import Prey,Predator,Food
-import sys
 #This file will contain the classes need for the gui for the simulation, they will be sued for the different windows
 #I will be using the PyQt6 library to make the gui.
 
@@ -57,11 +56,6 @@ to customise it to how you want it. The simulation will end once one of the popu
           self.setting_window.hide()
         else:
           self.setting_window.show()
-
-
- 
-       
-
 
 #now we will create the window for the settings window
 
@@ -340,6 +334,9 @@ class sim_window(QWidget):
          predator.add_rays()
       
       #adding some amount of food every so often
+      self.food_spawner = QTimer(self)
+      self.food_spawner.timeout.connect(self.spawn_food)
+      self.food_spawner.start(5000)
       
 
       view = QGraphicsView(self.scene)
@@ -363,12 +360,11 @@ class sim_window(QWidget):
       for predator in self.predator_group:
          predator.move(0,self.HEIGHT,0,self.WIDTH)
          
+   def spawn_food(self):
+      food = Food()
+      x = randint(0,self.WIDTH)
+      y = randint(0,self.HEIGHT)
+      food.setPos(x,y)
+      self.scene.addItem(food)
 
 
-
-
-app = QApplication(sys.argv)
-window = Start_Window()
-
-window.show()
-app.exec()

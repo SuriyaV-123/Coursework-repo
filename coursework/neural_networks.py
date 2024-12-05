@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from math import pi
+from PyQt6.QtCore import QPointF
 #here we make the neural network for the prey
 
 class prey_network(nn.Module):
@@ -37,18 +38,9 @@ class prey_network(nn.Module):
 
 class prey_agent(object):
   #alpha is the learning rate for the actor, beta is the learning rate for the critic, and gamma is the discount rate (how much you prioritise current rewards to future rewards)
-  def __init__(self,alpha,beta,current_pos,closest_predator,closest_food,speed,gamma=0.5):
+  def __init__(self,alpha,beta,speed,gamma=0.5):
      #getting the relevant positions
-    self.current_pos = current_pos
-    self.closest_predator = closest_predator
-    self.closest_food = closest_food
     self.speed = speed
-    #splitting the x and y co-ordinates
-    self.current_x,self.current_y = self.current_pos.x(),self.current_pos.y()
-    self.predator_x,self.predator_y = self.closest_predator.x(),self.current_pos.y()
-    self.food_x,self.food_y = self.closest_food.x(),self.closest_food.y()
-    #this is what we will input into the model
-    self.locations = torch.tensor([self.current_x,self.current_y,self.predator_x,self.predator_y,self.food_x,self.food_y], dtype=torch.float)
     self.alpha = alpha
     self.beta = beta
     self.gamma = gamma
@@ -61,12 +53,18 @@ class prey_agent(object):
 
     self.critic_network = prey_network(n_actions=1)
     self.critic_optim = optim.Adam(self.critic_network.parameters(),self.beta)
-      
-
+  #I added this function to make sure that the value of the closest predator and food wouldn't be null, so it could be converted into a QPointF
+  def update_locations(self,current_pos,closest_predator,closest_food):
+    self.current_pos_x = current_pos.x()
+    self.current_pos_y = current_pos.y()
+    self.closest_predator_x = closest_predator[0]
+    self.closest_predator_y = closest_predator[1]
+    self.closest_food_x = closest_food[0]
+    self.closest_food_y = closest_food[1]
 
   #in order to actually choose what to do, the prey will sample the action from a normal distribution
   def choose_action(self):
-
+    
     #inputs needed for the normal distribution mu is the mean, sigma is the standard deviation
     squished_output = self.softmax(self.actor_network.forward(self.locations))
     sigma,mu = squished_output[0],squished_output[1]
