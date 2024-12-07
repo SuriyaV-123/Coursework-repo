@@ -47,11 +47,12 @@ to customise it to how you want it. The simulation will end once one of the popu
         widget = QWidget()
         widget.setLayout(layout)
         self.setCentralWidget(widget)
-        #we will create an instance of the settings window in here so we can show the window using the main menu
-        self.setting_window = settings_window()
+
 
 
     def show_settings(self):
+         #we will create an instance of the settings window in here so we can show the window using the main menu
+        self.setting_window = settings_window()
         if self.setting_window.isVisible():
           self.setting_window.hide()
         else:
@@ -354,7 +355,6 @@ class sim_window(QWidget):
    def prey_loop(self):
       for prey in self.prey_group:
          prey.move(0,self.HEIGHT,0,self.WIDTH)
-         prey.detect()
 
    def predator_loop(self):
       for predator in self.predator_group:

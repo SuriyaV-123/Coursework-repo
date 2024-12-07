@@ -12,9 +12,7 @@ class prey_network(nn.Module):
   def __init__(self,n_actions):
     super().__init__()
 
-    #makes sure that the model uses the GPU if it's available, otherwise it uses the cpu
-    self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    self.to(self.device)
+
     #adding the activation functions such as relu and sigmoid
     #relu converts a negative input into 0, or just outputs the input if positive
     self.relu = nn.ReLU()
@@ -24,6 +22,10 @@ class prey_network(nn.Module):
     self.hidden_layer1 = nn.Linear(64,32) #64 inputs, 32 outputs
     self.hidden_layer2 = nn.Linear(32,16) #32 inputs, 16 outputs
     self.output_layer = nn.Linear(16,n_actions)
+
+    #makes sure that the model uses the GPU if it's available, otherwise it uses the cpu
+    self.device = torch.device('cpu')
+    self.to(self.device)
 
   #the forward function of the neural network
   def forward(self,input):
@@ -45,7 +47,7 @@ class prey_agent(object):
     self.beta = beta
     self.gamma = gamma
     self.log_probs = None
-    self.softmax = nn.Softmax()
+    self.softmax = nn.Softmax(dim=-1)
 
     self.actor_network = prey_network(n_actions=2)
        #intialising the optimiser
@@ -61,15 +63,17 @@ class prey_agent(object):
     self.closest_predator_y = closest_predator[1]
     self.closest_food_x = closest_food[0]
     self.closest_food_y = closest_food[1]
+    self.locations = torch.tensor([self.current_pos_x,self.current_pos_y,self.closest_predator_x,self.closest_predator_y,self.closest_food_x,self.closest_food_y],dtype=torch.float)
 
   #in order to actually choose what to do, the prey will sample the action from a normal distribution
   def choose_action(self):
     
     #inputs needed for the normal distribution mu is the mean, sigma is the standard deviation
+    #the dim is set to -1 to make sure that whatever is tensor size is passed through, the softmax function will still work.
     squished_output = self.softmax(self.actor_network.forward(self.locations))
     sigma,mu = squished_output[0],squished_output[1]
-    #makes sure that the standard deviation is always positive
-    sigma = torch.exp(sigma)
+    #makes sure that the standard deviation is always positive and that the value does not get out of hand
+    sigma = torch.clamp(torch.exp(sigma),min=1e-3,max=1e3)
     action_probs = torch.distributions.Normal(mu,sigma) #the probablity for each action
     probs = action_probs.sample(sample_shape=torch.Size([1])) 
     self.log_probs = action_probs.log_prob(probs).to(self.actor_network.device)
@@ -93,11 +97,8 @@ class prey_agent(object):
     actor_loss = -self.log_probs * delta
     critic_loss = delta ** 2 #making sure that delta is positive
     (actor_loss + critic_loss).backward() #using backpropagation to update weights and biases
+    #this should make sure that there is no exploding gradients, and keep them under control
+    torch.nn.utils.clip_grad_norm_(self.actor_network.parameters(), max_norm=1.0)
+    torch.nn.utils.clip_grad_norm_(self.critic_network.parameters(), max_norm=1.0)
     self.actor_optim.step()
     self.critic_optim.step()
-    
-
-
-
-
-

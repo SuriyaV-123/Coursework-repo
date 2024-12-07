@@ -94,9 +94,9 @@ class Prey(QGraphicsEllipseItem):
       max_y = max_y
       while self.closest_predator == (None,None) or self.closest_food == (None,None):
          self.detect()
-         self.prey_agent.update_locations(self.current_pos,self.closest_predator,self.closest_food)
          self.random_move(min_x,max_x,min_y,max_y)
 
+      self.prey_agent.update_locations(self.current_pos,self.closest_predator,self.closest_food)
       old_state = torch.tensor([self.x_pos,self.y_pos,self.closest_predator[0],self.closest_predator[1],self.closest_food[0],self.closest_food[1]], dtype=torch.float)
 #the moving speed and angle is chosen from the prey agent
       moving_speed, angle = prey_agent.choose_action()
@@ -131,7 +131,7 @@ class Prey(QGraphicsEllipseItem):
 #use detect
       self.detect()
       self.prey_agent.update_locations(self.current_pos,self.closest_predator,self.closest_food)      
-      new_state = torch.tensor([self.new_pos.x(),self.new_pos.y(),self.closest_predator.x(),self.closest_predator.y(),self.closest_food.x(),self.closest_food.y()], dtype=torch.float)
+      new_state = torch.tensor([self.new_pos.x(),self.new_pos.y(),self.closest_predator[0],self.closest_predator[1],self.closest_food[0],self.closest_food[1]], dtype=torch.float)
       self.setPos(self.new_pos)
       self.agent_learn(old_state,new_state)
       self.current_pos = self.new_pos
@@ -139,10 +139,10 @@ class Prey(QGraphicsEllipseItem):
 
       #this is the loop for the agent learning, this will be called at the end of the move function
     def agent_learn(self,old_state,new_state):
-       closest_predator_x = self.closest_predator.x()
-       closest_predator_y = self.closest_predator.y()
-       closest_food_x = self.closest_food.x()
-       closest_food_y = self.closest_food.y()
+       closest_predator_x = self.closest_predator[0]
+       closest_predator_y = self.closest_predator[1]
+       closest_food_x = self.closest_food[0]
+       closest_food_y = self.closest_food[1]
        #the predator and food distance is calculated using pythagoras
        predator_distance = math.sqrt((closest_predator_x-self.x_pos)**2 + (closest_predator_y-self.y_pos)**2)
        food_distance = math.sqrt((closest_food_x-self.x_pos)**2 + (closest_food_y-self.y_pos)**2)
@@ -286,8 +286,6 @@ class Prey(QGraphicsEllipseItem):
           if current_distance < closest_food_distance:
              closest_food_distance = current_distance
              self.closest_food = (food_x_pos,food_y_pos)
-
-      print(self.closest_predator)
 
 
 #This is the class for the predator, it will be very similar to the one for prey
