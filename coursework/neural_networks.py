@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from math import pi
-from PyQt6.QtCore import QPointF
+from PyQt6.QtCore import QObject, pyqtSignal
 #here we make the neural network for the prey
 
 class prey_network(nn.Module):
@@ -37,11 +37,14 @@ class prey_network(nn.Module):
     #we are not going to use the activation function just yet, as they will be different for the actor and critic.
     return X
 #this is what actually contains the actor and the critic, it will use the network made above.
+#as the program does not respond when I try to use the neural network, i'm going to try and use threading
+#the prey_agent will also act as the 'worker' and will send the signals over or something.
 
 class prey_agent(object):
   #alpha is the learning rate for the actor, beta is the learning rate for the critic, and gamma is the discount rate (how much you prioritise current rewards to future rewards)
   def __init__(self,alpha,beta,speed,gamma=0.5):
-     #getting the relevant positions
+    #to use threading, i'm using pyqt6 and making use of the signals to send data to the GUI when ready
+    #self.finished = pyqtSignal()
     self.speed = speed
     self.alpha = alpha
     self.beta = beta
@@ -63,26 +66,30 @@ class prey_agent(object):
     self.closest_predator_y = closest_predator[1]
     self.closest_food_x = closest_food[0]
     self.closest_food_y = closest_food[1]
-    self.locations = torch.tensor([self.current_pos_x,self.current_pos_y,self.closest_predator_x,self.closest_predator_y,self.closest_food_x,self.closest_food_y],dtype=torch.float)
+    self.locations = torch.tensor([self.current_pos_x,self.current_pos_y,self.closest_predator_x,self.closest_predator_y,self.closest_food_x,self.closest_food_y],dtype=torch.float,device=self.actor_network.device)
 
   #in order to actually choose what to do, the prey will sample the action from a normal distribution
   def choose_action(self):
     
     #inputs needed for the normal distribution mu is the mean, sigma is the standard deviation
     #the dim is set to -1 to make sure that whatever is tensor size is passed through, the softmax function will still work.
-    squished_output = self.softmax(self.actor_network.forward(self.locations))
-    sigma,mu = squished_output[0],squished_output[1]
+    output = self.actor_network.forward(self.locations)
+    mu,sigma = output[:0],output[:1]
+    mu = self.softmax(mu)
+
     #makes sure that the standard deviation is always positive and that the value does not get out of hand
     sigma = torch.clamp(torch.exp(sigma),min=1e-3,max=1e3)
     action_probs = torch.distributions.Normal(mu,sigma) #the probablity for each action
-    probs = action_probs.sample(sample_shape=torch.Size([1])) 
+    probs = action_probs.sample() 
     self.log_probs = action_probs.log_prob(probs).to(self.actor_network.device)
     #hopefully getting the required outputs from the network here
-    action = self.softmax(probs)
-    moving_speed = action[0].item() * self.speed
-    angle = action[1].item() *2*pi
+    moving_speed = probs[0].item() * self.speed
+    angle = probs[1].item() *2*pi
+    #should emit the finish signal now that it's done.
+    #self.finished.emit()
     return moving_speed,angle
-
+    
+    
 #now we update the weights and biases within the networks
   def learn(self,first_state,reward,second_state):
     #resets the gradients so there is no unneccesary info when training the networks
@@ -102,3 +109,9 @@ class prey_agent(object):
     torch.nn.utils.clip_grad_norm_(self.critic_network.parameters(), max_norm=1.0)
     self.actor_optim.step()
     self.critic_optim.step()
+
+
+
+
+ # def count_parameters(self):
+ #   return sum(p.numel() for p in self.actor_network.parameters() if p.requires_grad)

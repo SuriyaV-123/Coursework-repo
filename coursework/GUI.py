@@ -318,9 +318,10 @@ class sim_window(QWidget):
       #def __init__(self,speed,max_energy,energy_use,attack,gen,mutation):
       for prey in self.prey_group:
          #spawn the prey at random positions
-         x = randint(0,self.WIDTH-200)
-         y = randint(0,self.HEIGHT-200)
-         prey.setPos(x,y)
+         #x = randint(0,self.WIDTH-200)
+         #y = randint(0,self.HEIGHT-200)
+         x = randint(0,50)
+         prey.setPos(0,50)
          self.scene.addItem(prey)
          prey.add_rays()
       
@@ -335,9 +336,10 @@ class sim_window(QWidget):
          predator.add_rays()
       
       #adding some amount of food every so often
+      self.food_list = []
       self.food_spawner = QTimer(self)
       self.food_spawner.timeout.connect(self.spawn_food)
-      self.food_spawner.start(5000)
+      self.food_spawner.start(1000)
       
 
       view = QGraphicsView(self.scene)
@@ -355,6 +357,8 @@ class sim_window(QWidget):
    def prey_loop(self):
       for prey in self.prey_group:
          prey.move(0,self.HEIGHT,0,self.WIDTH)
+         #prey.random_move(0,self.HEIGHT,0,self.WIDTH)
+         #prey.eat(self.scene)
 
    def predator_loop(self):
       for predator in self.predator_group:
@@ -362,9 +366,12 @@ class sim_window(QWidget):
          
    def spawn_food(self):
       food = Food()
-      x = randint(0,self.WIDTH)
-      y = randint(0,self.HEIGHT)
+      #x = randint(0,self.WIDTH)
+      #y = randint(0,self.HEIGHT)
+      x = randint(0,50)
+      y = randint(0,50)
       food.setPos(x,y)
       self.scene.addItem(food)
+      self.food_list.append(food)
 
 

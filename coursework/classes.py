@@ -1,7 +1,7 @@
 #importing the relevant pyqt6 modules
 from PyQt6.QtWidgets import QGraphicsEllipseItem,QGraphicsLineItem
 from PyQt6.QtGui import QTransform,QPen
-from PyQt6.QtCore import Qt, QPointF,QTimer
+from PyQt6.QtCore import Qt, QPointF,QTimer,QRectF
 from neural_networks import prey_agent
 import torch
 #this is for the temporary movement
@@ -18,6 +18,8 @@ class Prey(QGraphicsEllipseItem):
       super().__init__(0,0,20,20)
       #first we set the shape and colour of the prey
       self.setBrush(Qt.GlobalColor.green)
+      #makes the prey on the bottom layer
+      self.setZValue(0)
       #now we add the attributes that we want to.
       #how fast it moves
       self.speed = speed
@@ -51,12 +53,6 @@ class Prey(QGraphicsEllipseItem):
       self.closest_predator = (None,None)
       self.closest_prey = (None,None)
       self.closest_food = (None,None)
-      #a list of all the prey in the prey's vision
-      self.prey_seen = []
-      #a list of all the predators in the prey's vision
-      self.predators_seen = []
-      #a list of all the food in the prey's vision
-      self.food_seen = []
       #this is the agent for the prey, this will allow the prey to learn and move
       self.prey_agent = prey_agent(0.5,0.5,self.speed,0.5)
 
@@ -75,7 +71,7 @@ class Prey(QGraphicsEllipseItem):
       for i in range(7):
          #make sure that the rays are evenly spread along the circle
          angle = i * (360/8)
-         #the cos function only uses radians
+         #the cos and sin function only uses radians
          max_x = 100 * math.cos(math.radians(angle))
          max_y = 100 * math.sin(math.radians(angle))
          #since the circles in pyqt6 don't have a width and height method, but the bounding rectangle does,
@@ -92,49 +88,51 @@ class Prey(QGraphicsEllipseItem):
       max_x = max_x
       min_y = min_y
       max_y = max_y
-      while self.closest_predator == (None,None) or self.closest_food == (None,None):
+      if self.closest_predator == (None,None) or self.closest_food == (None,None):
          self.detect()
          self.random_move(min_x,max_x,min_y,max_y)
-
-      self.prey_agent.update_locations(self.current_pos,self.closest_predator,self.closest_food)
-      old_state = torch.tensor([self.x_pos,self.y_pos,self.closest_predator[0],self.closest_predator[1],self.closest_food[0],self.closest_food[1]], dtype=torch.float)
-#the moving speed and angle is chosen from the prey agent
-      moving_speed, angle = prey_agent.choose_action()
-      self.setRotation(angle)
-      direction = QPointF(math.cos(angle),math.sin(angle))
-      self.new_pos = QPointF(self.current_pos + direction * moving_speed)
-      #because I don't want to mess with the learning too much, when the species reach one end of the map, they teleport to the other side
-      teleport_x = False
-      teleport_y = False
-      if self.new_pos.x() > max_x:
-         new_x = min_x + (self.new_pos.x()-max_x)
-         teleport_x = True
-
-      elif self.new_pos.x() < min_x:
-         new_x = max_x - self.new_pos.x()
-         teleport_x = True
-
-      if self.new_pos.y() > max_y:
-         new_y = min_y + (self.new_pos.y()-max_y)
-         teleport_y = True
       
-      elif self.new_pos.y() < min_y:
-         new_y = max_y - self.new_pos.y()
-         teleport_y = True
-      
-      if teleport_x is True:
-         self.new_pos = QPointF(new_x,self.y_pos)
+      else:
 
-      if teleport_y is True:
-         self.new_pos = QPointF(self.x_pos,new_y)
-      
-#use detect
-      self.detect()
-      self.prey_agent.update_locations(self.current_pos,self.closest_predator,self.closest_food)      
-      new_state = torch.tensor([self.new_pos.x(),self.new_pos.y(),self.closest_predator[0],self.closest_predator[1],self.closest_food[0],self.closest_food[1]], dtype=torch.float)
-      self.setPos(self.new_pos)
-      self.agent_learn(old_state,new_state)
-      self.current_pos = self.new_pos
+         self.prey_agent.update_locations(self.current_pos,self.closest_predator,self.closest_food)
+         old_state = torch.tensor([self.x_pos,self.y_pos,self.closest_predator[0],self.closest_predator[1],self.closest_food[0],self.closest_food[1]], dtype=torch.float)
+   #the moving speed and angle is chosen from the prey agent
+         moving_speed, angle = prey_agent.choose_action()
+         self.setRotation(angle)
+         direction = QPointF(math.cos(angle),math.sin(angle))
+         self.new_pos = QPointF(self.current_pos + direction * moving_speed)
+         #because I don't want to mess with the learning too much, when the species reach one end of the map, they teleport to the other side
+         teleport_x = False
+         teleport_y = False
+         if self.new_pos.x() > max_x:
+            new_x = min_x + (self.new_pos.x()-max_x)
+            teleport_x = True
+
+         elif self.new_pos.x() < min_x:
+            new_x = max_x - self.new_pos.x()
+            teleport_x = True
+
+         if self.new_pos.y() > max_y:
+            new_y = min_y + (self.new_pos.y()-max_y)
+            teleport_y = True
+         
+         elif self.new_pos.y() < min_y:
+            new_y = max_y - self.new_pos.y()
+            teleport_y = True
+         
+         if teleport_x is True:
+            self.new_pos = QPointF(new_x,self.y_pos)
+
+         if teleport_y is True:
+            self.new_pos = QPointF(self.x_pos,new_y)
+         
+   #use detect
+         self.detect()
+         self.prey_agent.update_locations(self.current_pos,self.closest_predator,self.closest_food)      
+         new_state = torch.tensor([self.new_pos.x(),self.new_pos.y(),self.closest_predator[0],self.closest_predator[1],self.closest_food[0],self.closest_food[1]], dtype=torch.float)
+         self.setPos(self.new_pos)
+         self.agent_learn(old_state,new_state)
+         self.current_pos = self.new_pos
 
 
       #this is the loop for the agent learning, this will be called at the end of the move function
@@ -206,20 +204,41 @@ class Prey(QGraphicsEllipseItem):
 
 
     def eat(self, scene):
-       #because we want to stop the prey from moving while eating, we temporarily reduce it's speed to 0 and set it back to the original speed afterwards
-       temp_speed = self.speed
-       #this will check if there is food within 3 coordinates of the prey
-       for x_coord in range(self.x_pos-3,self.x_pos+4):
-          for y_coord in range(self.y_pos-3,self.y_pos+4):
-             pos = QPointF(x_coord,y_coord)
-       #this checks if there is food within reach and will take the energy from it
-             entity = scene.itemAt(pos, QTransform())
-             if entity.__repr__() == "food":
-              self.speed = 0
-              extra_energy = entity.get_energy()
-              self.energy += extra_energy
-       self.speed = temp_speed
+       self.detect()
+       print(self.closest_food)
+       if self.closest_food != (None,None):
+         temp_speed = self.speed
+         #this will check if there is food within a distance of 5 of the prey
+         food_x = self.closest_food[0]
+         food_y = self.closest_food[1]
+         food_distance = math.sqrt((food_x-self.x_pos)**2 + (food_y-self.y_pos)**2)
+         if food_distance <= 30:
+          self.speed = 0
+          pos = QPointF(food_x,food_y)
+          pos_items = scene.items(QRectF(food_x-1,food_y-1,2,2))
+          food = None
+          print(pos)
+          print(pos_items)
+          for item in pos_items:
+             print(type(item))
+             if isinstance(item,Food):
+               print('yay')
+               food = item
+               break
+             
+          if food is not None:
+            extra_energy = food.get_energy()
+            self.energy += extra_energy
+            self.speed = temp_speed
+            print('yayaya')
+            scene.removeItem(food)
+          else:
+            print(':(')
+
+       else:
+          pass
     
+       
     def defend(self,scene):
        #first it checks whether it is being attacked or not
        if self.being_attacked is True:
@@ -256,36 +275,39 @@ class Prey(QGraphicsEllipseItem):
              self.food_seen.append(food)
             
        #next, check what is the closest of each prey, predator and food
-      closest_prey_distance = 9999999999
-      for prey in prey_detected:
-          prey_pos = prey[1]
-          prey_x_pos = prey_pos.x()
-          prey_y_pos = prey_pos.y()
-          #using pythagoras to find it
-          current_distance = math.sqrt((prey_x_pos-self.x_pos)**2 + (prey_y_pos-self.y_pos)**2)
-          if current_distance < closest_prey_distance:
-             closest_prey_distance = current_distance
-             self.closest_prey = (prey_x_pos,prey_y_pos)
-             
-      closest_predator_distance = 9999999999
-      for predator in predators_detected:
-          predator_pos = predator[1]
-          predator_x_pos = predator_pos.x()
-          predator_y_pos = predator_pos.y()
-          current_distance = math.sqrt((predator_x_pos-self.x_pos)**2 + (predator_y_pos-self.y_pos)**2)
-          if current_distance < closest_predator_distance:
-             closest_predator_distance = current_distance
-             self.closest_predator = (predator_x_pos,predator_y_pos)
-       
-      closest_food_distance = 9999999999
-      for food in food_detected:
-          food_pos = food[1]
-          food_x_pos = food_pos.x()
-          food_y_pos = food_pos.y()
-          current_distance = math.sqrt((food_x_pos-self.x_pos)**2 + (food_y_pos-self.y_pos)**2)
-          if current_distance < closest_food_distance:
-             closest_food_distance = current_distance
-             self.closest_food = (food_x_pos,food_y_pos)
+      if self.prey_seen != []:
+         closest_prey_distance = 9999999999
+         for prey in prey_detected:
+            prey_pos = prey[1]
+            prey_x_pos = prey_pos.x()
+            prey_y_pos = prey_pos.y()
+            #using pythagoras to find it
+            current_distance = math.sqrt((prey_x_pos-self.x_pos)**2 + (prey_y_pos-self.y_pos)**2)
+            if current_distance < closest_prey_distance:
+               closest_prey_distance = current_distance
+               self.closest_prey = (prey_x_pos,prey_y_pos)
+
+      if self.predators_seen != []:
+         closest_predator_distance = 9999999999
+         for predator in predators_detected:
+            predator_pos = predator[1]
+            predator_x_pos = predator_pos.x()
+            predator_y_pos = predator_pos.y()
+            current_distance = math.sqrt((predator_x_pos-self.x_pos)**2 + (predator_y_pos-self.y_pos)**2)
+            if current_distance < closest_predator_distance:
+               closest_predator_distance = current_distance
+               self.closest_predator = (predator_x_pos,predator_y_pos)
+      
+      if self.food_seen != []:
+         closest_food_distance = 9999999999
+         for food in food_detected:
+            food_pos = food[1]
+            food_x_pos = food_pos.x()
+            food_y_pos = food_pos.y()
+            current_distance = math.sqrt((food_x_pos-self.x_pos)**2 + (food_y_pos-self.y_pos)**2)
+            if current_distance < closest_food_distance:
+               closest_food_distance = current_distance
+               self.closest_food = (food_x_pos,food_y_pos)
 
 
 #This is the class for the predator, it will be very similar to the one for prey
@@ -296,6 +318,7 @@ class Predator(QGraphicsEllipseItem):
       super().__init__(0,0,40,40)
       #first we set the shape and colour of the predator
       self.setBrush(Qt.GlobalColor.red)
+      self.setZValue(2)
       #now we add the attributes
       #how fast it moves
       self.speed = speed
@@ -465,8 +488,9 @@ class Predator(QGraphicsEllipseItem):
              self.food_seen.append(food)
             
        #next, check what is the closest of each prey, predator and food
-       closest_prey_distance = 9999999999
-       for prey in self.prey_seen:
+       if self.prey_seen != []:
+         closest_prey_distance = 9999999999
+         for prey in self.prey_seen:
           prey_pos = prey[1]
           prey_x_pos = prey_pos.x()
           prey_y_pos = prey_pos.y()
@@ -475,26 +499,28 @@ class Predator(QGraphicsEllipseItem):
           if current_distance < closest_prey_distance:
              closest_prey_distance = current_distance
              self.closest_prey = (prey_x_pos,prey_y_pos)
-             
-       closest_predator_distance = 9999999999
-       for predator in self.predators_seen:
-          predator_pos = predator[1]
-          predator_x_pos = predator_pos.x()
-          predator_y_pos = predator_pos.y()
-          current_distance = math.sqrt((predator_x_pos-self.x_pos)**2 + (predator_y_pos-self.y_pos)**2)
-          if current_distance < closest_predator_distance:
-             closest_predator_distance = current_distance
-             self.closest_predator = (predator_x_pos,predator_y_pos)
+
+       if self.predators_seen != []:     
+         closest_predator_distance = 9999999999
+         for predator in self.predators_seen:
+            predator_pos = predator[1]
+            predator_x_pos = predator_pos.x()
+            predator_y_pos = predator_pos.y()
+            current_distance = math.sqrt((predator_x_pos-self.x_pos)**2 + (predator_y_pos-self.y_pos)**2)
+            if current_distance < closest_predator_distance:
+               closest_predator_distance = current_distance
+               self.closest_predator = (predator_x_pos,predator_y_pos)
        
-       closest_food_distance = 9999999999
-       for food in self.food_seen:
-          food_pos = food[1]
-          food_x_pos = food_pos.x()
-          food_y_pos = food_pos.y()
-          current_distance = math.sqrt((food_x_pos-self.x_pos)**2 + (food_y_pos-self.y_pos)**2)
-          if current_distance < closest_food_distance:
-             closest_food_distance = current_distance
-             self.closest_food = (food_x_pos,food_y_pos)
+       if self.food_seen != []:
+         closest_food_distance = 9999999999
+         for food in self.food_seen:
+            food_pos = food[1]
+            food_x_pos = food_pos.x()
+            food_y_pos = food_pos.y()
+            current_distance = math.sqrt((food_x_pos-self.x_pos)**2 + (food_y_pos-self.y_pos)**2)
+            if current_distance < closest_food_distance:
+               closest_food_distance = current_distance
+               self.closest_food = (food_x_pos,food_y_pos)
        print(self.closest_prey)
 
 #Class for when prey die, so that predators can eat them
@@ -502,6 +528,7 @@ class Predator(QGraphicsEllipseItem):
 class dead_prey(QGraphicsEllipseItem):
    def __init__(self,energy_stored,pos):
       super().__init__(0,0,10,10)
+      self.setZValue(3)
       #set the colour to grey, to show that the prey has died.
       self.setBrush(Qt.GlobalColor.gray)
       self.energy_stored = energy_stored
@@ -522,6 +549,7 @@ class Ray(QGraphicsLineItem):
       self.detected_prey = []
       self.detected_predators = []
       self.detected_food = []
+      self.setZValue(1)
 
    #returns the objects that the ray has
    def get_lists(self):
@@ -533,11 +561,11 @@ class Ray(QGraphicsLineItem):
       #resetting the viewed objects so it doesn't think there's any objects in sight when there aren't.
       self.detected_prey,self.detected_predators,self.detected_food = [],[],[]
       for item in self.detected_items:
-         if item.__repr__() == "predator":
+         if isinstance(item,Predator):
             self.detected_predators.append([item,item.pos()])
-         elif item.__repr__() == "food":
+         elif isinstance(item,Food):
             self.detected_food.append([item,item.pos()])
-         elif item.__repr__() == "prey":
+         elif isinstance(item,Prey):
             self.detected_prey.append([item,item.pos()])
 
 #making the class for food
@@ -545,9 +573,15 @@ class Food(QGraphicsEllipseItem):
    def __init__(self):
       super().__init__(0,0,10,10)
       self.setBrush(Qt.GlobalColor.yellow)
+      self.setZValue(400)
       #for now, giving any necessary attributes arbitrary values
       self.energy_stored = 30
       self.current_pos = self.pos()
       self.x_pos = self.current_pos.x()
       self.y_pos = self.current_pos.y()
-      #add the other methods later.      
+
+   def __repr__(self):
+      return "food"
+   
+   def get_energy(self):
+      return self.energy_stored
