@@ -97,7 +97,7 @@ class Prey(QGraphicsEllipseItem):
          self.prey_agent.update_locations(self.current_pos,self.closest_predator,self.closest_food)
          old_state = torch.tensor([self.x_pos,self.y_pos,self.closest_predator[0],self.closest_predator[1],self.closest_food[0],self.closest_food[1]], dtype=torch.float)
    #the moving speed and angle is chosen from the prey agent
-         moving_speed, angle = prey_agent.choose_action()
+         moving_speed, angle = self.prey_agent.choose_action()
          self.setRotation(angle)
          direction = QPointF(math.cos(angle),math.sin(angle))
          self.new_pos = QPointF(self.current_pos + direction * moving_speed)

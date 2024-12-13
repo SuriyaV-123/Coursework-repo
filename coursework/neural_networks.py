@@ -24,8 +24,14 @@ class prey_network(nn.Module):
     self.output_layer = nn.Linear(16,n_actions)
 
     #makes sure that the model uses the GPU if it's available, otherwise it uses the cpu
-    self.device = torch.device('cpu')
+    self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     self.to(self.device)
+
+# Initialize weights
+    for layer in [self.input_layer, self.hidden_layer1, self.hidden_layer2, self.output_layer]:
+      nn.init.xavier_uniform_(layer.weight)
+      nn.init.zeros_(layer.bias)  
+      #also zero the bias to start with.  
 
   #the forward function of the neural network
   def forward(self,input):
@@ -34,8 +40,9 @@ class prey_network(nn.Module):
     X = self.hidden_layer1(X)
     X = self.relu(X)
     X = self.hidden_layer2(X)
+    output = self.output_layer(X)
     #we are not going to use the activation function just yet, as they will be different for the actor and critic.
-    return X
+    return output
 #this is what actually contains the actor and the critic, it will use the network made above.
 #as the program does not respond when I try to use the neural network, i'm going to try and use threading
 #the prey_agent will also act as the 'worker' and will send the signals over or something.
@@ -43,8 +50,6 @@ class prey_network(nn.Module):
 class prey_agent(object):
   #alpha is the learning rate for the actor, beta is the learning rate for the critic, and gamma is the discount rate (how much you prioritise current rewards to future rewards)
   def __init__(self,alpha,beta,speed,gamma=0.5):
-    #to use threading, i'm using pyqt6 and making use of the signals to send data to the GUI when ready
-    #self.finished = pyqtSignal()
     self.speed = speed
     self.alpha = alpha
     self.beta = beta
@@ -74,14 +79,14 @@ class prey_agent(object):
     #inputs needed for the normal distribution mu is the mean, sigma is the standard deviation
     #the dim is set to -1 to make sure that whatever is tensor size is passed through, the softmax function will still work.
     output = self.actor_network.forward(self.locations)
-    mu,sigma = output[:0],output[:1]
-    mu = self.softmax(mu)
+    mu,sigma = output[0],output[1]
+    mu = torch.tanh(mu)
 
     #makes sure that the standard deviation is always positive and that the value does not get out of hand
-    sigma = torch.clamp(torch.exp(sigma),min=1e-3,max=1e3)
+    sigma = torch.clamp(torch.exp(sigma),min=1e-2,max=10)
     action_probs = torch.distributions.Normal(mu,sigma) #the probablity for each action
     probs = action_probs.sample() 
-    self.log_probs = action_probs.log_prob(probs).to(self.actor_network.device)
+    self.log_probs = action_probs.log_prob(probs).sum().to(self.actor_network.device)
     #hopefully getting the required outputs from the network here
     moving_speed = probs[0].item() * self.speed
     angle = probs[1].item() *2*pi

@@ -357,7 +357,6 @@ class sim_window(QWidget):
    def prey_loop(self):
       for prey in self.prey_group:
          prey.move(0,self.HEIGHT,0,self.WIDTH)
-         #prey.random_move(0,self.HEIGHT,0,self.WIDTH)
          #prey.eat(self.scene)
 
    def predator_loop(self):
