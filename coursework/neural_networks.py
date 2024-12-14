@@ -85,8 +85,9 @@ class prey_agent(object):
     #makes sure that the standard deviation is always positive and that the value does not get out of hand
     sigma = torch.clamp(torch.exp(sigma),min=1e-2,max=10)
     action_probs = torch.distributions.Normal(mu,sigma) #the probablity for each action
-    probs = action_probs.sample() 
+    probs = action_probs.sample(sample_shape=torch.Size([2]))
     self.log_probs = action_probs.log_prob(probs).sum().to(self.actor_network.device)
+
     #hopefully getting the required outputs from the network here
     moving_speed = probs[0].item() * self.speed
     angle = probs[1].item() *2*pi

@@ -56,6 +56,7 @@ class Prey(QGraphicsEllipseItem):
       #this is the agent for the prey, this will allow the prey to learn and move
       self.prey_agent = prey_agent(0.5,0.5,self.speed,0.5)
 
+
    
     def __repr__(self):
        return "prey"
@@ -146,7 +147,7 @@ class Prey(QGraphicsEllipseItem):
        food_distance = math.sqrt((closest_food_x-self.x_pos)**2 + (closest_food_y-self.y_pos)**2)
        #the reward is calculated as the distance between the predator and the food. This encourages the prey to try and run away from the predator and closer to the food.
        reward = predator_distance - food_distance
-       prey_agent.learn(self,old_state,reward,new_state)
+       self.prey_agent.learn(old_state,reward,new_state)
 
 #now we make a temporary method so the prey can move
 
@@ -180,14 +181,17 @@ class Prey(QGraphicsEllipseItem):
        self.setPos(self.x_pos,self.y_pos)
        self.energy -= self.energy_use * 0.1
     #this happens if the prey runs out of energy, they die and are removed from the scene.
-    def die(self,scene):
+    def die(self,scene,prey_group):
        if self.energy <= 0:
-          dead_prey = dead_prey(self.max_energy,self.current_pos)
+          current_pos = self.pos()
+          dead_prey = Dead_prey(self.max_energy,current_pos)
           scene.addItem(dead_prey)
+          prey_group.remove(self)
           scene.removeItem(self)
           
+          
     #this is the code so that a new instance of prey is made if the prey has enough energy
-    def reproduce(self,scene):
+    def reproduce(self,scene,prey_group):
        if self.energy > 50:
           #I copy the current prey's stats so its stats won't change, but they can still be changed 
           temp_stats = self.stats
@@ -199,44 +203,35 @@ class Prey(QGraphicsEllipseItem):
                 else:
                    stat -= 5
           #now we instatiate the child here with the stats that it should have
-          child = Prey(temp_stats[0],temp_stats[1],temp_stats[2],temp_stats[3],(self.gen + 1))
+          child = Prey(temp_stats[0],temp_stats[1],temp_stats[2],temp_stats[3],(self.gen + 1),self.mutation_chance)
+          child.setPos(self.current_pos)
+          child.add_rays()
           scene.addItem(child)
 
 
     def eat(self, scene):
-       self.detect()
-       print(self.closest_food)
-       if self.closest_food != (None,None):
-         temp_speed = self.speed
-         #this will check if there is food within a distance of 5 of the prey
-         food_x = self.closest_food[0]
-         food_y = self.closest_food[1]
+      self.detect()
+      print(f"Closest food coordinates: {self.closest_food}")
+      print(f"Food seen: {self.food_seen}")
+      
+      if self.closest_food != (None, None):
+         food_x, food_y = self.closest_food
          food_distance = math.sqrt((food_x-self.x_pos)**2 + (food_y-self.y_pos)**2)
+         print(f"Food distance: {food_distance}")
+         
          if food_distance <= 30:
-          self.speed = 0
-          pos = QPointF(food_x,food_y)
-          pos_items = scene.items(QRectF(food_x-1,food_y-1,2,2))
-          food = None
-          print(pos)
-          print(pos_items)
-          for item in pos_items:
-             print(type(item))
-             if isinstance(item,Food):
-               print('yay')
-               food = item
-               break
-             
-          if food is not None:
-            extra_energy = food.get_energy()
-            self.energy += extra_energy
-            self.speed = temp_speed
-            print('yayaya')
-            scene.removeItem(food)
-          else:
-            print(':(')
-
-       else:
-          pass
+               pos = QPointF(food_x, food_y)
+               pos_items = scene.items(QRectF(food_x-5, food_y-5, 10, 10))
+               
+               print(f"Number of items at food position: {len(pos_items)}")
+               for item in pos_items:
+                  print(f"Item type: {type(item)}")
+                  if isinstance(item, Food):
+                     print('Food item found!')
+                     extra_energy = item.get_energy()
+                     self.energy += extra_energy
+                     scene.removeItem(item)
+                     break
     
        
     def defend(self,scene):
@@ -277,7 +272,7 @@ class Prey(QGraphicsEllipseItem):
        #next, check what is the closest of each prey, predator and food
       if self.prey_seen != []:
          closest_prey_distance = 9999999999
-         for prey in prey_detected:
+         for prey in self.prey_seen:
             prey_pos = prey[1]
             prey_x_pos = prey_pos.x()
             prey_y_pos = prey_pos.y()
@@ -289,7 +284,7 @@ class Prey(QGraphicsEllipseItem):
 
       if self.predators_seen != []:
          closest_predator_distance = 9999999999
-         for predator in predators_detected:
+         for predator in self.predators_seen:
             predator_pos = predator[1]
             predator_x_pos = predator_pos.x()
             predator_y_pos = predator_pos.y()
@@ -300,7 +295,7 @@ class Prey(QGraphicsEllipseItem):
       
       if self.food_seen != []:
          closest_food_distance = 9999999999
-         for food in food_detected:
+         for food in self.food_seen:
             food_pos = food[1]
             food_x_pos = food_pos.x()
             food_y_pos = food_pos.y()
@@ -525,14 +520,15 @@ class Predator(QGraphicsEllipseItem):
 
 #Class for when prey die, so that predators can eat them
 
-class dead_prey(QGraphicsEllipseItem):
+class Dead_prey(QGraphicsEllipseItem):
    def __init__(self,energy_stored,pos):
-      super().__init__(0,0,10,10)
+      super().__init__(0,0,20,20)
       self.setZValue(3)
       #set the colour to grey, to show that the prey has died.
       self.setBrush(Qt.GlobalColor.gray)
       self.energy_stored = energy_stored
       self.coord = pos
+      self.setPos(self.coord)
       
 
 
