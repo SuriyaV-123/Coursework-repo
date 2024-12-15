@@ -46,7 +46,7 @@ class Prey(QGraphicsEllipseItem):
       #how much children it has had
       self.children = 0
       #whether it is currently being attacked or not
-      self.being_attacked = False
+      self.being_attacked = True
       #we add a list of the rays that the prey currently has
       self.rays = []
       #the position of the closest prey,predator and food
@@ -89,14 +89,24 @@ class Prey(QGraphicsEllipseItem):
       max_x = max_x
       min_y = min_y
       max_y = max_y
+
       if self.closest_predator == (None,None) or self.closest_food == (None,None):
          self.detect()
          self.random_move(min_x,max_x,min_y,max_y)
       
       else:
+         if self.closest_predator != (None,None):
+            closest_predator = self.closest_predator
+         else:
+            closest_predator = (99999.0,99999.0)
+         
+         if self.closest_food != (None,None):
+            closest_food = self.closest_food
+         else:
+            closest_food = (99999.0,99999.0)
 
-         self.prey_agent.update_locations(self.current_pos,self.closest_predator,self.closest_food)
-         old_state = torch.tensor([self.x_pos,self.y_pos,self.closest_predator[0],self.closest_predator[1],self.closest_food[0],self.closest_food[1]], 
+         self.prey_agent.update_locations(self.current_pos,closest_predator,closest_food)
+         old_state = torch.tensor([self.x_pos,self.y_pos,closest_predator[0],closest_predator[1],closest_food[0],closest_food[1]], 
                                   dtype=torch.float,device=self.prey_agent.actor_network.device)
    #the moving speed and angle is chosen from the prey agent
          moving_speed, angle = self.prey_agent.choose_action()
@@ -130,8 +140,19 @@ class Prey(QGraphicsEllipseItem):
          
    #use detect
          self.detect()
-         self.prey_agent.update_locations(self.current_pos,self.closest_predator,self.closest_food)      
-         new_state = torch.tensor([self.new_pos.x(),self.new_pos.y(),self.closest_predator[0],self.closest_predator[1],self.closest_food[0],self.closest_food[1]], 
+         #if the food or predator isn't detected, make the coordinates very big
+         if self.closest_predator != (None,None):
+            closest_predator = self.closest_predator
+         else:
+            closest_predator = (99999.0,99999.0)
+         
+         if self.closest_food != (None,None):
+            closest_food = self.closest_food
+         else:
+            closest_food = (99999.0,99999.0)
+            
+         self.prey_agent.update_locations(self.current_pos,closest_predator,closest_food)      
+         new_state = torch.tensor([self.new_pos.x(),self.new_pos.y(),closest_predator[0],closest_predator[1],closest_food[0],closest_food[1]], 
                                   dtype=torch.float,device=self.prey_agent.actor_network.device)
          self.setPos(self.new_pos)
          self.agent_learn(old_state,new_state)
@@ -205,12 +226,13 @@ class Prey(QGraphicsEllipseItem):
                 else:
                    stat -= 5
           #now we instatiate the child here with the stats that it should have
-          self.energy -= 50
+          self.energy -= self.max_energy//2
           child = Prey(temp_stats[0],temp_stats[1],temp_stats[2],temp_stats[3],(self.gen + 1),self.mutation_chance)
           child.setPos(self.current_pos)
           child.add_rays()
           prey_group.append(child)
           scene.addItem(child)
+
     
     def eat(self,scene,food_list):
        #temp speed is called so that the original speed isn't lost when we set it to 0 when the prey stops to eat.
@@ -220,7 +242,6 @@ class Prey(QGraphicsEllipseItem):
        pos_items = scene.items(search_area)
        for item in pos_items:
           if isinstance(item,Food):
-             print('food found')
              self.speed = 0
              extra_energy = item.get_energy()
              self.energy += extra_energy
@@ -232,18 +253,21 @@ class Prey(QGraphicsEllipseItem):
     def defend(self,scene):
        #first it checks whether it is being attacked or not
        if self.being_attacked is True:
+          temp_speed = self.speed
           #then it finds the position of the attacker within the correct range
-          for x_coord in range(self.x_pos-3,self.x_pos+4):
-           for y_coord in range(self.y_pos-3,self.y_pos+4):
-             pos = QPointF(x_coord,y_coord)
-             entity = scene.itemAt(pos, QTransform())
-             if entity.__repr__() == "predator":
-                #it will get the attacker's current energy
-                enemy_energy = entity.get_energy()
-                #it will then "deal damage" to the predator
-                enemy_energy -= self.attack
-                entity.set_energy()
-
+          search_area = QRectF(QPointF(self.x_pos-5,self.y_pos+5),QSizeF(10,10))
+          pos_items = scene.items(search_area)
+          for item in pos_items:
+             if isinstance(item,Predator):
+                print('predator found')
+                self.speed = 0
+                predator_energy = item.get_energy()
+                #reducing the attack power of the prey so that it cannot kill a predator by itself.
+                item.set_energy(predator_energy-(self.attack*0.3))
+                self.speed = temp_speed
+                print(item.get_energy())
+                break
+             
 #this takes in all the objects that the ray has detected
     def detect(self):
       #reset the lists so it doesn't affect the next iterations
@@ -407,8 +431,13 @@ class Predator(QGraphicsEllipseItem):
        self.setPos(self.x_pos,self.y_pos)
        self.energy -= self.energy_use * 0.1
     #this happens if the predator runs out of energy, they die and are removed from the scene.
-    def die(self,scene):
+    
+    def die(self,scene,predator_group):
        if self.energy <= 0:
+          current_pos = self.pos()
+          dead_predator = Dead_predator(self.max_energy,current_pos)
+          scene.addItem(dead_predator)
+          predator_group.remove(self)
           scene.removeItem(self)
           
     #this is the code so that a new instance of predator is made if the predator has enough energy
@@ -457,6 +486,7 @@ class Predator(QGraphicsEllipseItem):
                 #it will then "deal damage" to the predator
                 enemy_energy -= self.attack
                 entity.set_energy()
+                
 
 #this takes in all the objects that the ray has detected
     def detect(self):
@@ -525,7 +555,13 @@ class Dead_prey(QGraphicsEllipseItem):
       self.coord = pos
       self.setPos(self.coord)
       
-
+class Dead_predator(QGraphicsEllipseItem):
+   def __init__(self,pos):
+      super().__init__(0,0,30,30)
+      self.setZValue(3)
+      self.setBrush(Qt.GlobalColor.black)
+      self.coord = pos
+      self.setPos(self.coord)
 
 
 
