@@ -318,8 +318,7 @@ class sim_window(QWidget):
       #def __init__(self,speed,max_energy,energy_use,attack,gen,mutation):
       for prey in self.prey_group:
          #spawn the prey at random positions
-         x = randint(0,self.WIDTH-200)
-         #x = randint(0,50)
+         #x = randint(0,self.WIDTH-200)
          prey.setPos(0,50)
          self.scene.addItem(prey)
          prey.add_rays()
@@ -354,11 +353,12 @@ class sim_window(QWidget):
     #here we make a loop of what the prey will do as defined by the flowchart that I made
    
    def prey_loop(self):
-      for prey in self.prey_group:
+      prey_list = self.prey_group.copy()
+      for prey in prey_list:
          prey.move(0,self.HEIGHT,0,self.WIDTH)
-         #prey.eat(self.scene)
+         prey.eat(self.scene,self.food_list)
          #prey.die(self.scene,self.prey_group)
-         #prey.reproduce(self.scene)
+         #prey.reproduce(self.scene,self.prey_group)
 
    def predator_loop(self):
       for predator in self.predator_group:

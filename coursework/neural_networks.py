@@ -90,10 +90,11 @@ class prey_agent(object):
 
     #hopefully getting the required outputs from the network here
     moving_speed = probs[0].item() * self.speed
-    angle = probs[1].item() *2*pi
+    angle = probs[1].item() *360
     #should emit the finish signal now that it's done.
     #self.finished.emit()
     return moving_speed,angle
+  
     
     
 #now we update the weights and biases within the networks
@@ -101,6 +102,7 @@ class prey_agent(object):
     #resets the gradients so there is no unneccesary info when training the networks
     self.actor_optim.zero_grad()
     self.critic_optim.zero_grad()
+    
 
     new_critic_value = self.critic_network.forward(second_state)
     critic_value = self.critic_network.forward(first_state)

@@ -1,7 +1,7 @@
 #importing the relevant pyqt6 modules
 from PyQt6.QtWidgets import QGraphicsEllipseItem,QGraphicsLineItem
 from PyQt6.QtGui import QTransform,QPen
-from PyQt6.QtCore import Qt, QPointF,QTimer,QRectF
+from PyQt6.QtCore import Qt, QPointF,QTimer,QRectF,QSizeF
 from neural_networks import prey_agent
 import torch
 #this is for the temporary movement
@@ -96,7 +96,8 @@ class Prey(QGraphicsEllipseItem):
       else:
 
          self.prey_agent.update_locations(self.current_pos,self.closest_predator,self.closest_food)
-         old_state = torch.tensor([self.x_pos,self.y_pos,self.closest_predator[0],self.closest_predator[1],self.closest_food[0],self.closest_food[1]], dtype=torch.float)
+         old_state = torch.tensor([self.x_pos,self.y_pos,self.closest_predator[0],self.closest_predator[1],self.closest_food[0],self.closest_food[1]], 
+                                  dtype=torch.float,device=self.prey_agent.actor_network.device)
    #the moving speed and angle is chosen from the prey agent
          moving_speed, angle = self.prey_agent.choose_action()
          self.setRotation(angle)
@@ -130,7 +131,8 @@ class Prey(QGraphicsEllipseItem):
    #use detect
          self.detect()
          self.prey_agent.update_locations(self.current_pos,self.closest_predator,self.closest_food)      
-         new_state = torch.tensor([self.new_pos.x(),self.new_pos.y(),self.closest_predator[0],self.closest_predator[1],self.closest_food[0],self.closest_food[1]], dtype=torch.float)
+         new_state = torch.tensor([self.new_pos.x(),self.new_pos.y(),self.closest_predator[0],self.closest_predator[1],self.closest_food[0],self.closest_food[1]], 
+                                  dtype=torch.float,device=self.prey_agent.actor_network.device)
          self.setPos(self.new_pos)
          self.agent_learn(old_state,new_state)
          self.current_pos = self.new_pos
@@ -191,8 +193,8 @@ class Prey(QGraphicsEllipseItem):
           
           
     #this is the code so that a new instance of prey is made if the prey has enough energy
-    def reproduce(self,scene,prey_group):
-       if self.energy > 50:
+    def reproduce(self,scene,prey_group): 
+       if self.energy > (self.max_energy//2) and len(prey_group) < 25: #setting a limit to the prey population so that the program doesn't lag.
           #I copy the current prey's stats so its stats won't change, but they can still be changed 
           temp_stats = self.stats
           for stat in temp_stats:
@@ -203,37 +205,30 @@ class Prey(QGraphicsEllipseItem):
                 else:
                    stat -= 5
           #now we instatiate the child here with the stats that it should have
+          self.energy -= 50
           child = Prey(temp_stats[0],temp_stats[1],temp_stats[2],temp_stats[3],(self.gen + 1),self.mutation_chance)
           child.setPos(self.current_pos)
           child.add_rays()
+          prey_group.append(child)
           scene.addItem(child)
-
-
-    def eat(self, scene):
-      self.detect()
-      print(f"Closest food coordinates: {self.closest_food}")
-      print(f"Food seen: {self.food_seen}")
-      
-      if self.closest_food != (None, None):
-         food_x, food_y = self.closest_food
-         food_distance = math.sqrt((food_x-self.x_pos)**2 + (food_y-self.y_pos)**2)
-         print(f"Food distance: {food_distance}")
-         
-         if food_distance <= 30:
-               pos = QPointF(food_x, food_y)
-               pos_items = scene.items(QRectF(food_x-5, food_y-5, 10, 10))
-               
-               print(f"Number of items at food position: {len(pos_items)}")
-               for item in pos_items:
-                  print(f"Item type: {type(item)}")
-                  if isinstance(item, Food):
-                     print('Food item found!')
-                     extra_energy = item.get_energy()
-                     self.energy += extra_energy
-                     scene.removeItem(item)
-                     break
     
-       
+    def eat(self,scene,food_list):
+       #temp speed is called so that the original speed isn't lost when we set it to 0 when the prey stops to eat.
+       temp_speed = self.speed
+       search_area = QRectF(QPointF(self.x_pos-5,self.y_pos+5),QSizeF(10,10)) #creates a bounding box of 10 by 10 around the prey
+       #this is the area where we look for food around the prey
+       pos_items = scene.items(search_area)
+       for item in pos_items:
+          if isinstance(item,Food):
+             print('food found')
+             self.speed = 0
+             extra_energy = item.get_energy()
+             self.energy += extra_energy
+             food_list.remove(item)
+             scene.removeItem(item)
+             break
+       self.speed = temp_speed
+
     def defend(self,scene):
        #first it checks whether it is being attacked or not
        if self.being_attacked is True:
