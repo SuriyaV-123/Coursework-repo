@@ -111,6 +111,7 @@ class Prey(QGraphicsEllipseItem):
    #the moving speed and angle is chosen from the prey agent
          moving_speed, angle = self.prey_agent.choose_action()
          self.setRotation(angle)
+         print('turning')
          direction = QPointF(math.cos(angle),math.sin(angle))
          self.new_pos = QPointF(self.current_pos + direction * moving_speed)
          #because I don't want to mess with the learning too much, when the species reach one end of the map, they teleport to the other side

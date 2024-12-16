@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from math import pi
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QPointF
 #here we make the neural network for the prey
 
 class prey_network(nn.Module):
@@ -63,22 +63,53 @@ class prey_agent(object):
 
     self.critic_network = prey_network(n_actions=1)
     self.critic_optim = optim.Adam(self.critic_network.parameters(),self.beta)
-  #I added this function to make sure that the value of the closest predator and food wouldn't be null, so it could be converted into a QPointF
+  
   def update_locations(self,current_pos,closest_predator,closest_food):
-    self.current_pos_x = current_pos.x()
-    self.current_pos_y = current_pos.y()
-    self.closest_predator_x = closest_predator[0]
-    self.closest_predator_y = closest_predator[1]
-    self.closest_food_x = closest_food[0]
-    self.closest_food_y = closest_food[1]
-    self.locations = torch.tensor([self.current_pos_x,self.current_pos_y,self.closest_predator_x,self.closest_predator_y,self.closest_food_x,self.closest_food_y],dtype=torch.float,device=self.actor_network.device)
+#all of this is to make sure that there is something in the closest predator and closest food, so that when it is trying to choose an action, the program doesn't crash.
+    if isinstance(current_pos,QPointF) is True:
+      current_pos_x = current_pos.x()
+      current_pos_y = current_pos.y()
+    else:
+      current_pos_x = current_pos
+      current_pos_y = current_pos
+
+    if closest_predator != (None,None):
+
+      closest_predator_x = closest_predator[0]
+      closest_predator_y = closest_predator[1]
+    
+    else:
+      closest_predator_x = 99999.0
+      closest_predator_y = 99999.0
+    
+    if closest_food != (None,None):
+
+      closest_food_x = closest_food[0]
+      closest_food_y = closest_food[1]
+    
+    else:
+      closest_food_x = 99999.0
+      closest_food_y = 99999.0
+
+    
+    self.locations = torch.tensor([current_pos_x,current_pos_y,closest_predator_x,closest_predator_y,closest_food_x,closest_food_y],dtype=torch.float,device=self.actor_network.device)
 
   #in order to actually choose what to do, the prey will sample the action from a normal distribution
   def choose_action(self):
-    
+#if at any point, there is a value which has nan in it, set a default value so that the program will not crash.
+    if torch.isnan(self.locations).any() is True:
+      print('An item has a value of NaN')
+      #setting the default tensor as all 0s
+      self.location = torch.zeros(6,dtype=torch.float,device=self.actor_network.device())
+
+
     #inputs needed for the normal distribution mu is the mean, sigma is the standard deviation
-    #the dim is set to -1 to make sure that whatever is tensor size is passed through, the softmax function will still work.
+    
     output = self.actor_network.forward(self.locations)
+    #doing the same validation for NaN for the locations onto the output
+    if torch.isnan(output).any() is True:
+      output = torch.zeros(2,dtype=torch.float,device=self.actor_network.device)
+
     mu,sigma = output[0],output[1]
     mu = torch.tanh(mu)
 

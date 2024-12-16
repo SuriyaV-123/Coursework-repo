@@ -335,10 +335,10 @@ class sim_window(QWidget):
          predator.add_rays()
       
       #adding some amount of food every so often
-      #self.food_list = []
-      #self.food_spawner = QTimer(self)
-      #self.food_spawner.timeout.connect(self.spawn_food)
-      #self.food_spawner.start(1000)
+      self.food_list = []
+      self.food_spawner = QTimer(self)
+      self.food_spawner.timeout.connect(self.spawn_food)
+      self.food_spawner.start(1000)
       
 
       view = QGraphicsView(self.scene)
