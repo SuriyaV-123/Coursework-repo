@@ -233,6 +233,7 @@ class Prey(QGraphicsEllipseItem):
           child.add_rays()
           prey_group.append(child)
           scene.addItem(child)
+          
 
     
     def eat(self,scene,food_list):
@@ -260,7 +261,6 @@ class Prey(QGraphicsEllipseItem):
           pos_items = scene.items(search_area)
           for item in pos_items:
              if isinstance(item,Predator):
-                print('predator found')
                 self.speed = 0
                 predator_energy = item.get_energy()
                 #reducing the attack power of the prey so that it cannot kill a predator by itself.
@@ -275,10 +275,11 @@ class Prey(QGraphicsEllipseItem):
       self.prey_seen = []
       self.predators_seen = []
       self.food_seen = []
+      self.dead_prey_seen = []
       #iterate through all the rays that are connected to the prey
       for ray in self.rays:
           ray.check_collision()
-          prey_detected, predators_detected, food_detected = ray.get_lists()
+          prey_detected, predators_detected, food_detected, dead_prey_detected = ray.get_lists()
           #gets all the prey, predators and food seen by the rays and adds them to the lists.
           for prey in prey_detected:
              self.prey_seen.append(prey)
@@ -288,6 +289,9 @@ class Prey(QGraphicsEllipseItem):
           
           for food in food_detected:
              self.food_seen.append(food)
+
+          for dead_prey in dead_prey_detected:
+             self.dead_prey_seen.append(dead_prey)
             
        #next, check what is the closest of each prey, predator and food
       if self.prey_seen != []:
@@ -365,12 +369,15 @@ class Predator(QGraphicsEllipseItem):
       self.closest_predator = (None,None)
       self.closest_prey = (None,None)
       self.closest_food = (None,None)
+      self.closest_dead_prey = (None,None)
       #a list of all the prey in the predator's vision
       self.prey_seen = []
       #a list of all the predators in the predator's vision
       self.predators_seen = []
       #a list of all the food in the predator's vision
       self.food_seen = []
+      #a list of all the dead prey in the predator's vision
+      self.dead_prey_seen = []
 
    
     def __repr__(self):
@@ -435,15 +442,16 @@ class Predator(QGraphicsEllipseItem):
     
     def die(self,scene,predator_group):
        if self.energy <= 0:
+          #removes the predator from the scene and places a dead predator in place of it.
           current_pos = self.pos()
-          dead_predator = Dead_predator(self.max_energy,current_pos)
+          dead_predator = Dead_predator(current_pos)
           scene.addItem(dead_predator)
           predator_group.remove(self)
           scene.removeItem(self)
           
     #this is the code so that a new instance of predator is made if the predator has enough energy
-    def reproduce(self,scene):
-       if self.energy > 50:
+    def reproduce(self,scene,predator_group):
+       if self.energy > (self.max_energy//2):
           #I copy the current predator's stats so its stats won't change, but they can still be altered for the child's stats
           temp_stats = self.stats
           for stat in temp_stats:
@@ -454,39 +462,42 @@ class Predator(QGraphicsEllipseItem):
                 else:
                    stat -= 5
           #now we instatiate the child here with the stats that it should have
-          child = Predator(temp_stats[0],temp_stats[1],temp_stats[2],temp_stats[3],(self.gen + 1))
+          child = Predator(temp_stats[0],temp_stats[1],temp_stats[2],temp_stats[3],(self.gen + 1),self.mutation_chance)
+          child.setPos(self.current_pos)
+          child.add_rays()
+          self.energy -= (self.max_energy//2)
+          predator_group.append(child)
           scene.addItem(child)
 
 
-    def eat(self, scene):
-       #because we want to stop the prey from moving while eating, we temporarily reduce it's speed to 0 and set it back to the original speed afterwards
+    def eat(self,scene):
+       #temp speed is called so that the original speed isn't lost when we set it to 0 when the prey stops to eat.
        temp_speed = self.speed
-       #this will check if there is food within 3 coordinates of the prey
-       for x_coord in range(self.x_pos-3,self.x_pos+4):
-          for y_coord in range(self.y_pos-3,self.y_pos+4):
-             pos = QPointF(x_coord,y_coord)
-       #this checks if there is food within reach and will take the energy from it
-             entity = scene.itemAt(pos, QTransform())
-             if entity.__repr__() == "food":
-              self.speed = 0
-              extra_energy = entity.get_energy()
-              self.energy += extra_energy
+       search_area = QRectF(QPointF(self.x_pos-5,self.y_pos+5),QSizeF(10,10)) #creates a bounding box of 10 by 10 around the prey
+       #this is the area where we look for food around the prey
+       pos_items = scene.items(search_area)
+       for item in pos_items:
+          if isinstance(item,Dead_prey):
+             self.speed = 0
+             extra_energy = item.get_energy()
+             self.energy += extra_energy
+             scene.removeItem(item)
+             break
        self.speed = temp_speed
     
-    def defend(self,scene):
-       #first it checks whether it is being attacked or not
-       if self.being_attacked is True:
-          #then it finds the position of the attacker within the correct range
-          for x_coord in range(self.x_pos-3,self.x_pos+4):
-           for y_coord in range(self.y_pos-3,self.y_pos+4):
-             pos = QPointF(x_coord,y_coord)
-             entity = scene.itemAt(pos, QTransform())
-             if entity.__repr__() == "prey":
-                #it will get the attacker's current energy
-                enemy_energy = entity.get_energy()
-                #it will then "deal damage" to the predator
-                enemy_energy -= self.attack
-                entity.set_energy()
+    def fight(self,scene):
+   #as the predator will attack on sight, it doesn't need to see if it's being attacked or not.
+      temp_speed = self.speed
+      #then it finds the position of the prey within the correct range
+      search_area = QRectF(QPointF(self.x_pos-5,self.y_pos+5),QSizeF(10,10))
+      pos_items = scene.items(search_area)
+      for item in pos_items:
+         if isinstance(item,Prey):
+            self.speed = 0
+            prey_energy = item.get_energy()
+            item.set_energy(prey_energy-self.attack)
+            self.speed = temp_speed
+            break
                 
 
 #this takes in all the objects that the ray has detected
@@ -494,10 +505,11 @@ class Predator(QGraphicsEllipseItem):
        self.prey_seen = []
        self.predators_seen = []
        self.food_seen = []
+       self.dead_prey_seen = []
        #iterate through all the rays that are connected to the prey
        for ray in self.rays:
           ray.check_collision()
-          prey_detected, predators_detected, food_detected = ray.get_lists()
+          prey_detected, predators_detected, food_detected, dead_prey_detected = ray.get_lists()
           #gets all the prey, predators and food seen by the rays and adds them to the lists.
           for prey in prey_detected:
              self.prey_seen.append(prey)
@@ -507,6 +519,9 @@ class Predator(QGraphicsEllipseItem):
           
           for food in food_detected:
              self.food_seen.append(food)
+            
+          for dead_prey in dead_prey_detected:
+             self.dead_prey_seen.append(dead_prey)
             
        #next, check what is the closest of each prey, predator and food
        if self.prey_seen != []:
@@ -542,7 +557,19 @@ class Predator(QGraphicsEllipseItem):
             if current_distance < closest_food_distance:
                closest_food_distance = current_distance
                self.closest_food = (food_x_pos,food_y_pos)
-       print(self.closest_prey)
+       
+       if self.dead_prey_seen != []:
+         closest_dead_prey_distance = 9999999999
+         for dead_prey in self.dead_prey_seen:
+            dead_prey_pos = dead_prey[1]
+            dead_prey_x_pos = dead_prey_pos.x()
+            dead_prey_y_pos = dead_prey_pos.y()
+            current_distance = math.sqrt((dead_prey_x_pos-self.x_pos)**2 + (dead_prey_y_pos-self.y_pos)**2)
+            if current_distance < closest_dead_prey_distance:
+               closest_dead_prey_distance = current_distance
+               self.closest_dead_prey = (dead_prey_x_pos,dead_prey_y_pos)
+         print(self.closest_dead_prey)
+         print(closest_dead_prey_distance)
 
 #Class for when prey die, so that predators can eat them
 
@@ -555,6 +582,9 @@ class Dead_prey(QGraphicsEllipseItem):
       self.energy_stored = energy_stored
       self.coord = pos
       self.setPos(self.coord)
+
+   def get_energy(self):
+      return self.energy_stored
       
 class Dead_predator(QGraphicsEllipseItem):
    def __init__(self,pos):
@@ -577,17 +607,18 @@ class Ray(QGraphicsLineItem):
       self.detected_prey = []
       self.detected_predators = []
       self.detected_food = []
+      self.detected_dead_prey = []
       self.setZValue(1)
 
    #returns the objects that the ray has
    def get_lists(self):
-      return self.detected_prey, self.detected_predators, self.detected_food
+      return self.detected_prey, self.detected_predators, self.detected_food, self.detected_dead_prey
    
 
    def check_collision(self):
       self.detected_items = self.collidingItems()
       #resetting the viewed objects so it doesn't think there's any objects in sight when there aren't.
-      self.detected_prey,self.detected_predators,self.detected_food = [],[],[]
+      self.detected_prey,self.detected_predators,self.detected_food,self.detected_dead_prey = [],[],[],[]
       for item in self.detected_items:
          if isinstance(item,Predator):
             self.detected_predators.append([item,item.pos()])
@@ -595,6 +626,8 @@ class Ray(QGraphicsLineItem):
             self.detected_food.append([item,item.pos()])
          elif isinstance(item,Prey):
             self.detected_prey.append([item,item.pos()])
+         elif isinstance(item,Dead_prey):
+            self.detected_dead_prey.append([item,item.pos()])
 
 #making the class for food
 class Food(QGraphicsEllipseItem):

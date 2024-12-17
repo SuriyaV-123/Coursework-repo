@@ -110,11 +110,19 @@ class prey_agent(object):
     if torch.isnan(output).any() is True:
       output = torch.zeros(2,dtype=torch.float,device=self.actor_network.device)
 
-    mu,sigma = output[0],output[1]
+      mu,sigma = 0,1
+    else:
+      mu,sigma = output[0],output[1]
+    print(self.locations)
+    print(output)
+    print(f'Raw mu:{mu}')
+    print(f'Raw sigma:{sigma}')
     mu = torch.tanh(mu)
 
     #makes sure that the standard deviation is always positive and that the value does not get out of hand
     sigma = torch.clamp(torch.exp(sigma),min=1e-2,max=10)
+    print(f'Output mu:{mu}')
+    print(f'Output sigma: {sigma}')
     action_probs = torch.distributions.Normal(mu,sigma) #the probablity for each action
     probs = action_probs.sample(sample_shape=torch.Size([2]))
     self.log_probs = action_probs.log_prob(probs).sum().to(self.actor_network.device)

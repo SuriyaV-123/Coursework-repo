@@ -4,7 +4,8 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 from random import randint
 from classes import Prey,Predator,Food
-#This file will contain the classes need for the gui for the simulation, they will be sued for the different windows
+import pyqtgraph as pg
+#This file will contain the classes need for the gui for the simulation, they will be used for the different windows
 #I will be using the PyQt6 library to make the gui.
 
 
@@ -318,9 +319,9 @@ class sim_window(QWidget):
       #def __init__(self,speed,max_energy,energy_use,attack,gen,mutation):
       for prey in self.prey_group:
          #spawn the prey at random positions
-         #x = randint(0,self.WIDTH-200)
-         #y = randin(0,self.HEIGHT-200)
-         prey.setPos(0,50)
+         x = randint(0,self.WIDTH-200)
+         y = randint(0,self.HEIGHT-200)
+         prey.setPos(100.0,300.0)
          self.scene.addItem(prey)
          prey.add_rays()
       
@@ -340,10 +341,48 @@ class sim_window(QWidget):
       self.food_spawner.timeout.connect(self.spawn_food)
       self.food_spawner.start(1000)
       
+        #I think it will be best to put the graph in this file, rather than have a separate file.
+      self.graph = pg.PlotWidget()
+      self.graph.setBackground('w') #setting a white background for the graph
+      self.prey_pen = pg.mkPen(0,255,0) #this should make the pen colour green
+      self.predator_pen = pg.mkPen(255,0,0)
+      #adding the titles
+      self.graph.setTitle("Population vs time")
+      self.graph.setLabel("left","Population")
+      self.graph.setLabel("bottom","time (seconds)")
+      self.graph.addLegend()
+      self.graph.setYRange(0,25) #as 25 should be the maximum population the prey and predators can have, that will be the limit
+      self.seconds = [0,1]
+      self.prey_num = [len(self.prey_group),len(self.prey_group)]
+      self.predator_num = [len(self.predator_group),len(self.predator_group)]
+      #this is what we will plot on the graph
+      self.prey_line = self.graph.plot(
+         self.seconds,
+         self.prey_num,
+         name = 'Prey population',
+         pen = self.prey_pen
+
+      )
+
+      self.predator_line = self.graph.plot(
+         self.seconds,
+         self.predator_num,
+         name = 'Predator population',
+         pen = self.predator_pen
+         
+      )
+      #adding a timer to periodically update the graph
+      self.update_timer = QTimer()
+      self.update_timer.timeout.connect(self.update_graph)
+      self.update_timer.start(1000)
+
+      self.graph.setFixedSize(400,300)
+      self.graph.
 
       view = QGraphicsView(self.scene)
-      layout = QVBoxLayout()
+      layout = QHBoxLayout()
       layout.addWidget(view)
+      layout.addWidget(self.graph)
       self.setLayout(layout)
 
       #now we add a timer so the simulation can update
@@ -352,20 +391,57 @@ class sim_window(QWidget):
       self.timer.timeout.connect(self.predator_loop)
       self.timer.start(80) #this will run at around 13 fps
     #here we make a loop of what the prey will do as defined by the flowchart that I made
+
+     
+
+   #method to update the graph every second
+   def update_graph(self):
+      #the maximum range of seconds that it will store is 20
+      #first it checks if the seconds list only has 1 item
+      if len(self.seconds) == 1:
+         #if it does, then the list adds 1 on the end
+         self.seconds = [0,1]
+         #if it's between 1 and 20, then it will append the last number in the list plus one
+      elif len(self.seconds) > 1 and len(self.seconds) <= 20:
+         self.seconds.append(self.seconds[-1]+ 1)
+      else:
+         #the same thing happens here, but remove the first item in the list.
+         self.seconds = self.seconds[1:]
+         self.seconds.append(self.seconds[-1]+ 1)
+      
+      #a similar update occurs to prey and predator population every second
+      if len(self.prey_num) <= 20:
+         self.prey_num.append(len(self.prey_group))
+      else:
+         self.prey_num = self.prey_num[1:]
+         self.prey_num.append(len(self.prey_group))
+
+      if len(self.predator_num) <= 20:
+         self.predator_num.append(len(self.predator_group))
+      else:
+         self.predator_num = self.predator_num[1:]
+         self.predator_num.append(len(self.predator_group))
+      
+      self.prey_line.setData(self.seconds,self.prey_num)
+      self.predator_line.setData(self.seconds,self.predator_num)
    
    def prey_loop(self):
       prey_list = self.prey_group.copy()
       for prey in prey_list:
-         prey.move(0,self.HEIGHT,0,self.WIDTH)
-         prey.eat(self.scene,self.food_list)
-         #prey.die(self.scene,self.prey_group)
+         prey.random_move(0,self.HEIGHT,0,self.WIDTH)
+         #prey.eat(self.scene,self.food_list)
+         prey.die(self.scene,self.prey_group)
          #prey.reproduce(self.scene,self.prey_group)
          #prey.defend(self.scene)
 
 
    def predator_loop(self):
-      for predator in self.predator_group:
+      predator_list = self.predator_group.copy()
+      for predator in predator_list:
+         predator.detect()
          predator.move(0,self.HEIGHT,0,self.WIDTH)
+         #predator.fight(self.scene)
+         #predator.eat(self.scene)
 
          
    def spawn_food(self):
@@ -377,5 +453,5 @@ class sim_window(QWidget):
       food.setPos(x,y)
       self.scene.addItem(food)
       self.food_list.append(food)
-
-
+   
+  
