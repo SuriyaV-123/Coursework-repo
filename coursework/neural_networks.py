@@ -29,7 +29,8 @@ class prey_network(nn.Module):
 
 # Initialize weights
     for layer in [self.input_layer, self.hidden_layer1, self.hidden_layer2, self.output_layer]:
-      nn.init.xavier_uniform_(layer.weight)
+      #am using kaiming to distribute weights instead of xavier, as kaiming is better suited to 
+      nn.init.kaiming_uniform_(layer.weight)
       nn.init.zeros_(layer.bias)  
       #also zero the bias to start with.  
 
@@ -60,10 +61,12 @@ class prey_agent(object):
     self.actor_network = prey_network(n_actions=2)
        #intialising the optimiser
     self.actor_optim = optim.Adam(self.actor_network.parameters(),self.alpha)
+    self.actor_scheduler = optim.lr_scheduler.StepLR(self.actor_optim, step_size=100, gamma=0.9)
 
     self.critic_network = prey_network(n_actions=1)
     self.critic_optim = optim.Adam(self.critic_network.parameters(),self.beta)
-  
+    self.critic_scheduler = optim.lr_scheduler.StepLR(self.critic_optim, step_size=100, gamma=0.9)    
+
   def update_locations(self,current_pos,closest_predator,closest_food):
 #all of this is to make sure that there is something in the closest predator and closest food, so that when it is trying to choose an action, the program doesn't crash.
     if isinstance(current_pos,QPointF) is True:
@@ -93,6 +96,10 @@ class prey_agent(object):
 
     
     self.locations = torch.tensor([current_pos_x,current_pos_y,closest_predator_x,closest_predator_y,closest_food_x,closest_food_y],dtype=torch.float,device=self.actor_network.device)
+    if torch.isnan(self.locations).any() is True:
+      print('An item has a value of NaN')
+      #setting the default tensor as all 0s
+      self.locations = torch.zeros(6,dtype=torch.float,device=self.actor_network.device())
 
   #in order to actually choose what to do, the prey will sample the action from a normal distribution
   def choose_action(self):
@@ -100,19 +107,18 @@ class prey_agent(object):
     if torch.isnan(self.locations).any() is True:
       print('An item has a value of NaN')
       #setting the default tensor as all 0s
-      self.location = torch.zeros(6,dtype=torch.float,device=self.actor_network.device())
+      self.locations = torch.zeros(6,dtype=torch.float,device=self.actor_network.device())
 
 
     #inputs needed for the normal distribution mu is the mean, sigma is the standard deviation
     
     output = self.actor_network.forward(self.locations)
     #doing the same validation for NaN for the locations onto the output
-    if torch.isnan(output).any() is True:
+    if torch.isnan(output).any() is True or torch.isinf(output).any():
       output = torch.zeros(2,dtype=torch.float,device=self.actor_network.device)
 
-      mu,sigma = 0,1
-    else:
-      mu,sigma = output[0],output[1]
+    mu,sigma = output[0],output[1]
+
     print(self.locations)
     print(output)
     print(f'Raw mu:{mu}')
@@ -145,7 +151,9 @@ class prey_agent(object):
 
     new_critic_value = self.critic_network.forward(second_state)
     critic_value = self.critic_network.forward(first_state)
+
     reward = torch.tensor(reward, dtype=torch.float).to(self.actor_network.device)
+    reward = torch.clamp(reward, min=-50, max = 50)
     #delta is the temporal difference loss (a.k.a the difference between what happens and what we want to happen)
     delta = reward + self.gamma*new_critic_value - critic_value
     actor_loss = -self.log_probs * delta
@@ -156,6 +164,10 @@ class prey_agent(object):
     torch.nn.utils.clip_grad_norm_(self.critic_network.parameters(), max_norm=1.0)
     self.actor_optim.step()
     self.critic_optim.step()
+
+    self.actor_scheduler.step()
+    self.critic_scheduler.step()
+
 
 
 

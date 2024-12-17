@@ -377,12 +377,13 @@ class sim_window(QWidget):
       self.update_timer.start(1000)
 
       self.graph.setFixedSize(400,300)
-      self.graph.
+      
 
       view = QGraphicsView(self.scene)
       layout = QHBoxLayout()
       layout.addWidget(view)
       layout.addWidget(self.graph)
+      self.graph.move(self.WIDTH-400,0)
       self.setLayout(layout)
 
       #now we add a timer so the simulation can update
@@ -428,7 +429,7 @@ class sim_window(QWidget):
    def prey_loop(self):
       prey_list = self.prey_group.copy()
       for prey in prey_list:
-         prey.random_move(0,self.HEIGHT,0,self.WIDTH)
+         prey.move(0,self.HEIGHT,0,self.WIDTH)
          #prey.eat(self.scene,self.food_list)
          prey.die(self.scene,self.prey_group)
          #prey.reproduce(self.scene,self.prey_group)
