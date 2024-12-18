@@ -1,7 +1,7 @@
 #first we import the necessary modules, mainly from pyqt6. We also import the classes from the classes file
 from PyQt6.QtWidgets import QWidget, QMainWindow, QPushButton, QLabel, QVBoxLayout, QSlider, QHBoxLayout,QGroupBox, QCheckBox, QGraphicsScene, QGraphicsView
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont,QKeyEvent
 from random import randint
 from classes import Prey,Predator,Food
 import pyqtgraph as pg
@@ -299,6 +299,8 @@ class sim_window(QWidget):
       #we set the height and width of the screen
       self.WIDTH = 900
       self.HEIGHT = 600
+      #this check whether the simulation is paused or not.
+      self.paused = False 
 
       self.prey_speed = prey_speed
       self.prey_avg_energy = prey_avg_energy
@@ -431,7 +433,7 @@ class sim_window(QWidget):
       for prey in prey_list:
          prey.move(0,self.HEIGHT,0,self.WIDTH)
          #prey.eat(self.scene,self.food_list)
-         prey.die(self.scene,self.prey_group)
+         #prey.die(self.scene,self.prey_group)
          #prey.reproduce(self.scene,self.prey_group)
          #prey.defend(self.scene)
 
@@ -454,5 +456,18 @@ class sim_window(QWidget):
       food.setPos(x,y)
       self.scene.addItem(food)
       self.food_list.append(food)
-   
-  
+      
+   #this should check if the spacebar is pressed during the simulation. If it is, then it should pause the simulation.
+   def keyPressEvent(self, event: QKeyEvent):
+      if event.key() == Qt.Key.Key_Space:
+         print('spacebar pressed')
+         if self.paused is False:
+            self.paused = True
+            self.timer.stop()
+            self.update_timer.stop()
+            self.food_spawner.stop()
+         elif self.paused is True:
+            self.paused = False
+            self.timer.start()
+            self.update_timer.start()
+            self.food_spawner.stop()

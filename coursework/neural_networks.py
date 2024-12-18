@@ -30,12 +30,27 @@ class prey_network(nn.Module):
 # Initialize weights
     for layer in [self.input_layer, self.hidden_layer1, self.hidden_layer2, self.output_layer]:
       #am using kaiming to distribute weights instead of xavier, as kaiming is better suited to 
-      nn.init.kaiming_uniform_(layer.weight)
+      nn.init.kaiming_uniform_(layer.weight,nonlinearity='relu')
       nn.init.zeros_(layer.bias)  
       #also zero the bias to start with.  
 
   #the forward function of the neural network
   def forward(self,input):
+    print("Input tensor details:")
+    print(f"Input shape: {input.shape}")
+    print(f"Input dtype: {input.dtype}")
+    print(f"Input device: {input.device}")
+    
+    # Check for NaN or inf values
+    if torch.isnan(input).any():
+        print("NaN detected in input")
+        print("NaN locations:")
+        print(torch.isnan(input))
+    
+    # Check for extreme values
+    print(f"Input min: {input.min()}")
+    print(f"Input max: {input.max()}")
+    
     X = self.input_layer(input)
     X = self.relu(X)
     X = self.hidden_layer1(X)
@@ -99,23 +114,24 @@ class prey_agent(object):
     if torch.isnan(self.locations).any() is True:
       print('An item has a value of NaN')
       #setting the default tensor as all 0s
-      self.locations = torch.zeros(6,dtype=torch.float,device=self.actor_network.device())
+      self.locations = torch.zeros(6,dtype=torch.float,device=self.actor_network.device)
 
   #in order to actually choose what to do, the prey will sample the action from a normal distribution
   def choose_action(self):
 #if at any point, there is a value which has nan in it, set a default value so that the program will not crash.
-    if torch.isnan(self.locations).any() is True:
+    if torch.isnan(self.locations).any():
       print('An item has a value of NaN')
       #setting the default tensor as all 0s
-      self.locations = torch.zeros(6,dtype=torch.float,device=self.actor_network.device())
+      self.locations = torch.zeros(6,dtype=torch.float,device=self.actor_network.device)
 
 
     #inputs needed for the normal distribution mu is the mean, sigma is the standard deviation
     
     output = self.actor_network.forward(self.locations)
     #doing the same validation for NaN for the locations onto the output
-    if torch.isnan(output).any() is True or torch.isinf(output).any():
+    if torch.isnan(output).any() or torch.isinf(output).any():
       output = torch.zeros(2,dtype=torch.float,device=self.actor_network.device)
+      print('output has nan')
 
     mu,sigma = output[0],output[1]
 
@@ -126,7 +142,7 @@ class prey_agent(object):
     mu = torch.tanh(mu)
 
     #makes sure that the standard deviation is always positive and that the value does not get out of hand
-    sigma = torch.clamp(torch.exp(sigma),min=1e-2,max=10)
+    sigma = torch.nn.functional.softplus(sigma) + 1e-2 
     print(f'Output mu:{mu}')
     print(f'Output sigma: {sigma}')
     action_probs = torch.distributions.Normal(mu,sigma) #the probablity for each action

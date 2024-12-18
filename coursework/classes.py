@@ -55,6 +55,8 @@ class Prey(QGraphicsEllipseItem):
       self.closest_food = (None,None)
       #this is the agent for the prey, this will allow the prey to learn and move
       self.prey_agent = prey_agent(0.5,0.5,self.speed,0.5)
+      #tells the prey if it's infected or not from a disease
+      self.infected = False
 
 
    
@@ -98,12 +100,12 @@ class Prey(QGraphicsEllipseItem):
          if self.closest_predator != (None,None):
             closest_predator = self.closest_predator
          else:
-            closest_predator = (99999.0,99999.0)
+            closest_predator = (max_x,max_y)
          
          if self.closest_food != (None,None):
             closest_food = self.closest_food
          else:
-            closest_food = (99999.0,99999.0)
+            closest_food = (max_x,max_y)
 
          self.prey_agent.update_locations(self.current_pos,closest_predator,closest_food)
          old_state = torch.tensor([self.x_pos,self.y_pos,closest_predator[0],closest_predator[1],closest_food[0],closest_food[1]], 
@@ -115,42 +117,32 @@ class Prey(QGraphicsEllipseItem):
          direction = QPointF(math.cos(angle),math.sin(angle))
          self.new_pos = QPointF(self.current_pos + direction * moving_speed)
          #because I don't want to mess with the learning too much, when the species reach one end of the map, they teleport to the other side
-         teleport_x = False
-         teleport_y = False
+
          if self.new_pos.x() > max_x:
-            new_x = min_x + (self.new_pos.x()-max_x)
-            teleport_x = True
+            self.new_pos = QPointF(min_x + (self.new_pos.x() - max_x), self.new_pos.y())
 
          elif self.new_pos.x() < min_x:
-            new_x = max_x - self.new_pos.x()
-            teleport_x = True
+            self.new_pos = QPointF(max_x - (min_x - self.new_pos.x()), self.new_pos.y())
 
          if self.new_pos.y() > max_y:
-            new_y = min_y + (self.new_pos.y()-max_y)
-            teleport_y = True
+            self.new_pos = QPointF(self.new_pos.x(), (min_y + (self.new_pos.x() - max_y)))
+
          
          elif self.new_pos.y() < min_y:
-            new_y = max_y - self.new_pos.y()
-            teleport_y = True
-         
-         if teleport_x is True:
-            self.new_pos = QPointF(new_x,self.y_pos)
+            QPointF(self.new_pos.x(), (max_x - (min_y - self.new_pos.y())))
 
-         if teleport_y is True:
-            self.new_pos = QPointF(self.x_pos,new_y)
-         
    #use detect
          self.detect()
          #if the food or predator isn't detected, make the coordinates very big
          if self.closest_predator != (None,None):
             closest_predator = self.closest_predator
          else:
-            closest_predator = (99999.0,99999.0)
+            closest_predator = (max_x,max_y)
          
          if self.closest_food != (None,None):
             closest_food = self.closest_food
          else:
-            closest_food = (99999.0,99999.0)
+            closest_food = (max_x,max_y)
             
          self.prey_agent.update_locations(self.current_pos,closest_predator,closest_food)      
          new_state = torch.tensor([self.new_pos.x(),self.new_pos.y(),closest_predator[0],closest_predator[1],closest_food[0],closest_food[1]], 
@@ -378,6 +370,8 @@ class Predator(QGraphicsEllipseItem):
       self.food_seen = []
       #a list of all the dead prey in the predator's vision
       self.dead_prey_seen = []
+      #tells the prey if it's infected or not from a disease
+      self.infected = False
 
    
     def __repr__(self):
@@ -646,3 +640,5 @@ class Food(QGraphicsEllipseItem):
    
    def get_energy(self):
       return self.energy_stored
+   
+
