@@ -442,7 +442,7 @@ class sim_window(QWidget):
       predator_list = self.predator_group.copy()
       for predator in predator_list:
          predator.detect()
-         predator.move(0,self.HEIGHT,0,self.WIDTH)
+         predator.random_move(0,self.HEIGHT,0,self.WIDTH)
          #predator.fight(self.scene)
          #predator.eat(self.scene)
 

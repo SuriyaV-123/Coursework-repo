@@ -150,6 +150,8 @@ class Prey(QGraphicsEllipseItem):
          self.setPos(self.new_pos)
          self.agent_learn(old_state,new_state)
          self.current_pos = self.new_pos
+         self.x_pos = self.new_pos.x()
+         self.y_pos = self.new_pos.y()
 
 
       #this is the loop for the agent learning, this will be called at the end of the move function
@@ -402,8 +404,75 @@ class Predator(QGraphicsEllipseItem):
          self.rays.append(ray)
 
 #now we make a temporary method so the predator can move
+    def move(self,min_x,max_x,min_y,max_y):
+      min_x = min_x
+      max_x = max_x
+      min_y = min_y
+      max_y = max_y
+
+      if self.closest_prey == (None,None) or self.closest_dead_prey == (None,None):
+         self.detect()
+         self.random_move(min_x,max_x,min_y,max_y)
+      
+      else:
+         if self.closest_prey != (None,None):
+            closest_prey = self.closest_prey
+         else:
+            closest_predator = (max_x,max_y)
+         
+         if self.closest_food != (None,None):
+            closest_food = self.closest_food
+         else:
+            closest_food = (max_x,max_y)
+
+         self.prey_agent.update_locations(self.current_pos,closest_predator,closest_food)
+         old_state = torch.tensor([self.x_pos,self.y_pos,closest_predator[0],closest_predator[1],closest_food[0],closest_food[1]], 
+                                  dtype=torch.float,device=self.prey_agent.actor_network.device)
+   #the moving speed and angle is chosen from the prey agent
+         moving_speed, angle = self.prey_agent.choose_action()
+         self.setRotation(angle)
+         print('turning')
+         direction = QPointF(math.cos(angle),math.sin(angle))
+         self.new_pos = QPointF(self.current_pos + direction * moving_speed)
+         #because I don't want to mess with the learning too much, when the species reach one end of the map, they teleport to the other side
+
+         if self.new_pos.x() > max_x:
+            self.new_pos = QPointF(min_x + (self.new_pos.x() - max_x), self.new_pos.y())
+
+         elif self.new_pos.x() < min_x:
+            self.new_pos = QPointF(max_x - (min_x - self.new_pos.x()), self.new_pos.y())
+
+         if self.new_pos.y() > max_y:
+            self.new_pos = QPointF(self.new_pos.x(), (min_y + (self.new_pos.x() - max_y)))
+
+         
+         elif self.new_pos.y() < min_y:
+            QPointF(self.new_pos.x(), (max_x - (min_y - self.new_pos.y())))
+
+   #use detect
+         self.detect()
+         #if the food or predator isn't detected, make the coordinates very big
+         if self.closest_predator != (None,None):
+            closest_predator = self.closest_predator
+         else:
+            closest_predator = (max_x,max_y)
+         
+         if self.closest_food != (None,None):
+            closest_food = self.closest_food
+         else:
+            closest_food = (max_x,max_y)
+            
+         self.prey_agent.update_locations(self.current_pos,closest_predator,closest_food)      
+         new_state = torch.tensor([self.new_pos.x(),self.new_pos.y(),closest_predator[0],closest_predator[1],closest_food[0],closest_food[1]], 
+                                  dtype=torch.float,device=self.prey_agent.actor_network.device)
+         self.setPos(self.new_pos)
+         self.agent_learn(old_state,new_state)
+         self.current_pos = self.new_pos
     
-    def move(self,min_x,max_x, min_y, max_y):
+    
+    
+    
+    def random_move(self,min_x,max_x, min_y, max_y):
        #first we move on the x-axis
        if randint(1,2) == 1:
           #this makes sure it doesn't go beyond the borders of the screen
@@ -634,11 +703,14 @@ class Food(QGraphicsEllipseItem):
       self.current_pos = self.pos()
       self.x_pos = self.current_pos.x()
       self.y_pos = self.current_pos.y()
+      self.spoil_time = 10
 
    def __repr__(self):
       return "food"
    
    def get_energy(self):
       return self.energy_stored
+   
+   
    
 
