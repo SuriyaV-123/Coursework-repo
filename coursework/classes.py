@@ -54,7 +54,7 @@ class Prey(QGraphicsEllipseItem):
       self.closest_prey = (None,None)
       self.closest_food = (None,None)
       #this is the agent for the prey, this will allow the prey to learn and move
-      self.prey_agent = prey_agent(0.5,0.5,self.speed,0.5)
+      self.prey_agent = prey_agent(0.07,0.07,self.speed,0.5)
       #tells the prey if it's infected or not from a disease
       self.infected = False
 
@@ -125,11 +125,11 @@ class Prey(QGraphicsEllipseItem):
             self.new_pos = QPointF(max_x - (min_x - self.new_pos.x()), self.new_pos.y())
 
          if self.new_pos.y() > max_y:
-            self.new_pos = QPointF(self.new_pos.x(), (min_y + (self.new_pos.x() - max_y)))
+            self.new_pos = QPointF(self.new_pos.x(), (min_y + (self.new_pos.y() - max_y)))
 
          
          elif self.new_pos.y() < min_y:
-            QPointF(self.new_pos.x(), (max_x - (min_y - self.new_pos.y())))
+            QPointF(self.new_pos.x(), (max_y - (min_y - self.new_pos.y())))
 
    #use detect
          self.detect()

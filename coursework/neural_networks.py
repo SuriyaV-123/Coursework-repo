@@ -143,7 +143,7 @@ class prey_agent(object):
     print(output)
     print(f'Raw mu:{mu}')
     print(f'Raw sigma:{sigma}')
-    mu = torch.tanh(mu)
+    mu = torch.sigmoid(mu)
 
     #makes sure that the standard deviation is always positive and that the value does not get out of hand
     sigma = torch.nn.functional.softplus(sigma) + 1e-2 
@@ -176,6 +176,7 @@ class prey_agent(object):
     print(f"reward: {reward}")
     #delta is the temporal difference loss (a.k.a the difference between what happens and what we want to happen)
     delta = reward + self.gamma*new_critic_value - critic_value
+    print(f"Delta: {delta}")
     actor_loss = -self.log_probs * delta
     critic_loss = delta ** 2 #making sure that delta is positive
     (actor_loss + critic_loss).backward() #using backpropagation to update weights and biases
@@ -325,7 +326,7 @@ class predator_agent(object):
     print(output)
     print(f'Raw mu:{mu}')
     print(f'Raw sigma:{sigma}')
-    mu = torch.tanh(mu)
+    mu = torch.sigmoid(mu)
 
     #makes sure that the standard deviation is always positive and that the value does not get out of hand
     sigma = torch.nn.functional.softplus(sigma) + 1e-2 
