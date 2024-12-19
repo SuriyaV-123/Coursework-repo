@@ -1,9 +1,9 @@
 #first we import the necessary modules, mainly from pyqt6. We also import the classes from the classes file
 from PyQt6.QtWidgets import QWidget, QMainWindow, QPushButton, QLabel, QVBoxLayout, QSlider, QHBoxLayout,QGroupBox, QCheckBox, QGraphicsScene, QGraphicsView
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer,QPointF
 from PyQt6.QtGui import QFont,QKeyEvent
 from random import randint
-from classes import Prey,Predator,Food
+from classes import Prey,Predator,Food,Dead_prey
 import pyqtgraph as pg
 #This file will contain the classes need for the gui for the simulation, they will be used for the different windows
 #I will be using the PyQt6 library to make the gui.
@@ -19,7 +19,11 @@ class Start_Window(QMainWindow):
         text = '''
 Welcome this prey vs predator simulation, where it will simulate an interaction between two species: a prey population and a predator population.
 The simulation will display a graph in the top right corner displaying the populations. Before the simulation starts, you can change the settings,
-to customise it to how you want it. The simulation will end once one of the populations die or when you decide to end it. '''
+to customise it to how you want it. The speed is how fast it moves, the average energy use is the energy use multiplier per action,
+the max energy is the most energy it can store. The population is how many of them are there to start with, the mutation is the chance of the child's
+stats changing compared to it's parent, and the attack is how much damage it can deal. The infectivity is the chance to infect a creature, and the
+lethality is the amount of energy the disease takes from an infected creature. The simulation will end once one of the populations die or when you decide to end it.
+You can press the spacebar to pause or unpause the simulation at anytime. '''
         intro = QLabel(text)
         #this is the button to go to the next page
         settings_button = QPushButton("Go to settings")
@@ -197,7 +201,11 @@ class settings_window(QMainWindow):
           slider = setting[0]
           label = setting[1]
           stat = setting[2]
-          slider.setMaximum(100)
+          if slider == self.prey_speed_slider or slider == self.prey_population_slider or slider == self.predator_speed_slider or slider == self.predator_population_slider:
+             slider.setMaximum(25)
+          else:
+             
+            slider.setMaximum(100)
           slider.setTickPosition(QSlider.TickPosition.TicksBelow)
           slider.setTickInterval(5)
           #here we make sure that the correct label is under the right slider
@@ -342,6 +350,10 @@ class sim_window(QWidget):
       self.food_spawner = QTimer(self)
       self.food_spawner.timeout.connect(self.spawn_food)
       self.food_spawner.start(1000)
+
+      self.food_despawner = QTimer(self)
+      self.food_despawner.timeout.connect(self.spoil)
+      self.food_despawner.start(1000)
       
         #I think it will be best to put the graph in this file, rather than have a separate file.
       self.graph = pg.PlotWidget()
@@ -431,8 +443,8 @@ class sim_window(QWidget):
    def prey_loop(self):
       prey_list = self.prey_group.copy()
       for prey in prey_list:
-         prey.move(0,self.HEIGHT,0,self.WIDTH)
-         #prey.eat(self.scene,self.food_list)
+         prey.random_move(0,self.HEIGHT,0,self.WIDTH)
+         prey.eat(self.scene,self.food_list)
          #prey.die(self.scene,self.prey_group)
          #prey.reproduce(self.scene,self.prey_group)
          #prey.defend(self.scene)
@@ -442,20 +454,30 @@ class sim_window(QWidget):
       predator_list = self.predator_group.copy()
       for predator in predator_list:
          predator.detect()
-         predator.random_move(0,self.HEIGHT,0,self.WIDTH)
+         predator.move(0,self.HEIGHT,0,self.WIDTH)
          #predator.fight(self.scene)
          #predator.eat(self.scene)
 
          
    def spawn_food(self):
-      food = Food()
+      food = Food(self,self.scene,self.food_list)
+      dead_prey = Dead_prey(30,QPointF(1,2))
       #x = randint(0,self.WIDTH)
       #y = randint(0,self.HEIGHT)
       x = randint(0,50)
       y = randint(0,50)
       food.setPos(x,y)
+      dead_prey.setPos(x,y)
       self.scene.addItem(food)
+      self.scene.addItem(dead_prey)
       self.food_list.append(food)
+
+   def spoil(self):
+      food_group = self.food_list.copy()
+      for food in food_group:
+         food.lose_energy()
+         food.spoil(self.scene,self.food_list)
+
       
    #this should check if the spacebar is pressed during the simulation. If it is, then it should pause the simulation.
    def keyPressEvent(self, event: QKeyEvent):

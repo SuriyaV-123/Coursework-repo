@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import QGraphicsEllipseItem,QGraphicsLineItem
 from PyQt6.QtGui import QTransform,QPen
 from PyQt6.QtCore import Qt, QPointF,QTimer,QRectF,QSizeF
-from neural_networks import prey_agent
+from neural_networks import prey_agent,predator_agent
 import torch
 #this is for the temporary movement
 from random import randint
@@ -55,8 +55,8 @@ class Prey(QGraphicsEllipseItem):
       self.closest_food = (None,None)
       #this is the agent for the prey, this will allow the prey to learn and move
       self.prey_agent = prey_agent(0.07,0.07,self.speed,0.5)
-      #tells the prey if it's infected or not from a disease
-      self.infected = False
+      #this will slow down the learning for the prey agent to make sure that it can can learn better in the future.
+      self.learn_counter = 0
 
 
    
@@ -148,7 +148,10 @@ class Prey(QGraphicsEllipseItem):
          new_state = torch.tensor([self.new_pos.x(),self.new_pos.y(),closest_predator[0],closest_predator[1],closest_food[0],closest_food[1]], 
                                   dtype=torch.float,device=self.prey_agent.actor_network.device)
          self.setPos(self.new_pos)
-         self.agent_learn(old_state,new_state)
+         self.learn_counter += 1
+         if self.learn_counter == 5:
+            self.agent_learn(old_state,new_state)
+            self.learn_counter = 0
          self.current_pos = self.new_pos
          self.x_pos = self.new_pos.x()
          self.y_pos = self.new_pos.y()
@@ -372,8 +375,8 @@ class Predator(QGraphicsEllipseItem):
       self.food_seen = []
       #a list of all the dead prey in the predator's vision
       self.dead_prey_seen = []
-      #tells the prey if it's infected or not from a disease
-      self.infected = False
+      self.learn_counter = 0
+      self.predator_agent = predator_agent(0.05,0.05,self.speed,0.5)
 
    
     def __repr__(self):
@@ -418,18 +421,18 @@ class Predator(QGraphicsEllipseItem):
          if self.closest_prey != (None,None):
             closest_prey = self.closest_prey
          else:
-            closest_predator = (max_x,max_y)
+            closest_prey = (max_x,max_y)
          
-         if self.closest_food != (None,None):
-            closest_food = self.closest_food
+         if self.closest_dead_prey != (None,None):
+            closest_dead_prey = self.closest_dead_prey
          else:
-            closest_food = (max_x,max_y)
+            closest_dead_prey = (max_x,max_y)
 
-         self.prey_agent.update_locations(self.current_pos,closest_predator,closest_food)
-         old_state = torch.tensor([self.x_pos,self.y_pos,closest_predator[0],closest_predator[1],closest_food[0],closest_food[1]], 
-                                  dtype=torch.float,device=self.prey_agent.actor_network.device)
+         self.predator_agent.update_locations(self.current_pos,closest_prey,closest_dead_prey)
+         old_state = torch.tensor([self.x_pos,self.y_pos,closest_prey[0],closest_prey[1],closest_dead_prey[0],closest_dead_prey[1]], 
+                                  dtype=torch.float,device=self.predator_agent.actor_network.device)
    #the moving speed and angle is chosen from the prey agent
-         moving_speed, angle = self.prey_agent.choose_action()
+         moving_speed, angle = self.predator_agent.choose_action()
          self.setRotation(angle)
          print('turning')
          direction = QPointF(math.cos(angle),math.sin(angle))
@@ -451,23 +454,45 @@ class Predator(QGraphicsEllipseItem):
 
    #use detect
          self.detect()
-         #if the food or predator isn't detected, make the coordinates very big
-         if self.closest_predator != (None,None):
-            closest_predator = self.closest_predator
+#if the prey or dead_prey isn't detected, then make it as far as it could be within the simulation limits
+         if self.closest_prey != (None,None):
+            closest_prey = self.closest_prey
          else:
-            closest_predator = (max_x,max_y)
+            closest_prey = (max_x,max_y)
          
-         if self.closest_food != (None,None):
-            closest_food = self.closest_food
+         if self.closest_dead_prey != (None,None):
+            closest_dead_prey = self.closest_dead_prey
          else:
-            closest_food = (max_x,max_y)
+            closest_dead_prey = (max_x,max_y)
             
-         self.prey_agent.update_locations(self.current_pos,closest_predator,closest_food)      
-         new_state = torch.tensor([self.new_pos.x(),self.new_pos.y(),closest_predator[0],closest_predator[1],closest_food[0],closest_food[1]], 
-                                  dtype=torch.float,device=self.prey_agent.actor_network.device)
+         self.predator_agent.update_locations(self.current_pos,closest_prey,closest_dead_prey)      
+         new_state = torch.tensor([self.new_pos.x(),self.new_pos.y(),closest_prey[0],closest_prey[1],closest_dead_prey[0],closest_dead_prey[1]], 
+                                  dtype=torch.float,device=self.predator_agent.actor_network.device)
          self.setPos(self.new_pos)
-         self.agent_learn(old_state,new_state)
+         if self.learn_counter == 5:
+            self.agent_learn(old_state,new_state)
+            self.learn_counter = 0
+         else:
+            self.learn_counter += 1
+            
          self.current_pos = self.new_pos
+
+   
+    def agent_learn(self,old_state,new_state):
+       closest_prey_x = self.closest_prey[0]
+       closest_prey_y = self.closest_prey[1]
+       closest_dead_prey_x = self.closest_dead_prey[0]
+       closest_dead_prey_y = self.closest_dead_prey[1]
+       #the predator and food distance is calculated using pythagoras
+       prey_distance = math.sqrt((closest_prey_x-self.x_pos)**2 + (closest_prey_y-self.y_pos)**2)
+       dead_prey_distance = math.sqrt((closest_dead_prey_x-self.x_pos)**2 + (closest_dead_prey_y-self.y_pos)**2)
+  #this makes sure that the predator tries to get as close to the prey as possible. 
+  # If it is somehow at the exact same position as prey and dead prey, the reward is set to a high value.
+       if dead_prey_distance == 0 and prey_distance == 0:
+          reward = 999999
+       else:
+         reward = 1/(dead_prey_distance + 0.5*prey_distance)
+       self.predator_agent.learn(old_state,reward,new_state)
     
     
     
@@ -694,16 +719,16 @@ class Ray(QGraphicsLineItem):
 
 #making the class for food
 class Food(QGraphicsEllipseItem):
-   def __init__(self):
+   def __init__(self,window,scene,list):
       super().__init__(0,0,10,10)
       self.setBrush(Qt.GlobalColor.yellow)
       self.setZValue(400)
       #for now, giving any necessary attributes arbitrary values
-      self.energy_stored = 30
+      self.energy_stored = 40
       self.current_pos = self.pos()
       self.x_pos = self.current_pos.x()
       self.y_pos = self.current_pos.y()
-      self.spoil_time = 10
+ 
 
    def __repr__(self):
       return "food"
@@ -712,5 +737,11 @@ class Food(QGraphicsEllipseItem):
       return self.energy_stored
    
    
+   def spoil(self,scene,list):
+      #this will remove the food after a certain amount of time from the simulation
+      if self.energy_stored <= 0:
+         scene.removeItem(self)
+         list.remove(self)
    
-
+   def lose_energy(self):
+      self.energy_stored -= 2
